@@ -90,7 +90,7 @@ Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 d
 ## Phase 8 — sorting: sub-tracker (branch phase-8-sorting)
 
 - [x] sort/argsort (axis/flatten, kinds, NaN-last)
-- [ ] searchsorted, partition/argpartition, argmin/argmax, flatnonzero, count_nonzero
+- [x] searchsorted, partition/argpartition, argmin/argmax (axis+NaN), flatnonzero, count_nonzero
 - [ ] unique(+index/inverse/counts), set ops, bincount, histogram
 
 Increment 1: 7 cases (153 total / 776 checks), 0 divergences, clang+gcc+ASan green.
