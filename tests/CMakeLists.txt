@@ -3,6 +3,7 @@ add_executable(numpp_tests
     test_dtype.cpp
     test_manip.cpp
     test_stats.cpp
+    test_grids.cpp
     test_ndarray.cpp
     test_creation.cpp
     test_backend.cpp
