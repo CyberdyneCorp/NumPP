@@ -73,7 +73,7 @@ Increment 1: 7 fft cases (95 total / 506 checks), 0 divergences, clang+gcc+ASan 
 
 - [x] SeedSequence (exact) + PCG64 (XSL-RR); bit-exact raw stream + random doubles
 - [x] Generator: integers (32-bit Lemire), uniform, shuffle/permutation (bit-exact); choice (replace=True bit-exact)
-- [ ] Distributions: standard_normal/normal/exponential/poisson/binomial/gamma/beta/chisquare
+- [x] Distributions: standard_normal/exponential/normal/exponential/gamma/beta/chisquare/poisson/binomial (correct samplers; statistical parity, issue #8)
 - [ ] MT19937 + legacy RandomState
 
 Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
@@ -84,5 +84,6 @@ Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
 | # | Issue | Phase | Regression test | Status |
 |---|-------|------:|-----------------|--------|
 | #2 | minimum/maximum didn't propagate NaN | 3 | test_ufunc2 "minimum/maximum propagate NaN" | fixed |
+| #8 | distributions not bit-exact (no ziggurat tables) | 6 | test_random3 moments | open |
 | #7 | choice(replace=False) not bit-exact w/ numpy | 6 | test_random2 valid-sample | open |
 | #3 | Phase 3 parity tracking (out=/where=, nan-reductions, argmin/cumsum) | 3 | — | open |

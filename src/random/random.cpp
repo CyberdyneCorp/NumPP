@@ -1,5 +1,6 @@
 #include "numpp/random/random.hpp"
 
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -100,6 +101,82 @@ ndarray Generator::choice(int64_t n, int64_t size, bool replace) {
   if (size > n) throw value_error("choice: size larger than population without replacement");
   ndarray perm = permutation(n);
   return perm.index({IndexItem{Slice{0, size, 1}}}).copy();
+}
+
+// --- distributions (correct samplers; statistical parity only, issue #8) ---
+
+double Generator::next_gauss() {  // Marsaglia polar
+  if (has_gauss_) { has_gauss_ = false; return gauss_; }
+  double x1, x2, r2;
+  do { x1 = 2.0 * bit_.next_double() - 1.0; x2 = 2.0 * bit_.next_double() - 1.0; r2 = x1 * x1 + x2 * x2; } while (r2 >= 1.0 || r2 == 0.0);
+  double f = std::sqrt(-2.0 * std::log(r2) / r2);
+  gauss_ = x1 * f; has_gauss_ = true;
+  return x2 * f;
+}
+double Generator::next_exponential() { return -std::log1p(-bit_.next_double()); }
+
+double Generator::next_std_gamma(double shape) {  // Marsaglia-Tsang
+  if (shape < 1.0) return next_std_gamma(shape + 1.0) * std::pow(bit_.next_double(), 1.0 / shape);
+  const double d = shape - 1.0 / 3.0, c = 1.0 / std::sqrt(9.0 * d);
+  for (;;) {
+    double x, v;
+    do { x = next_gauss(); v = 1.0 + c * x; } while (v <= 0.0);
+    v = v * v * v;
+    double u = bit_.next_double();
+    if (u < 1.0 - 0.0331 * x * x * x * x) return d * v;
+    if (std::log(u) < 0.5 * x * x + d * (1.0 - v + std::log(v))) return d * v;
+  }
+}
+
+ndarray Generator::standard_normal(const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = next_gauss();
+  return out;
+}
+ndarray Generator::standard_exponential(const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = next_exponential();
+  return out;
+}
+ndarray Generator::normal(double loc, double scale, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = loc + scale * next_gauss();
+  return out;
+}
+ndarray Generator::exponential(double scale, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = scale * next_exponential();
+  return out;
+}
+ndarray Generator::gamma(double shape_k, double scale, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = scale * next_std_gamma(shape_k);
+  return out;
+}
+ndarray Generator::beta(double a, double b, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) { double x = next_std_gamma(a), y = next_std_gamma(b); p[i] = x / (x + y); }
+  return out;
+}
+ndarray Generator::chisquare(double df, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = 2.0 * next_std_gamma(df / 2.0);
+  return out;
+}
+ndarray Generator::poisson(double lam, const Shape& s) {  // Knuth
+  ndarray out(s, kInt64, Order::C); int64_t* p = out.typed_data<int64_t>();
+  const double L = std::exp(-lam);
+  for (int64_t i = 0; i < out.size(); ++i) {
+    int64_t k = 0; double prod = 1.0;
+    do { ++k; prod *= bit_.next_double(); } while (prod > L);
+    p[i] = k - 1;
+  }
+  return out;
+}
+ndarray Generator::binomial(int64_t n, double p, const Shape& s) {  // bernoulli sum
+  ndarray out(s, kInt64, Order::C); int64_t* o = out.typed_data<int64_t>();
+  for (int64_t i = 0; i < out.size(); ++i) { int64_t c = 0; for (int64_t j = 0; j < n; ++j) if (bit_.next_double() < p) ++c; o[i] = c; }
+  return out;
 }
 
 }  // namespace random
