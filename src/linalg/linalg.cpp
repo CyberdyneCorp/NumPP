@@ -213,6 +213,97 @@ void jacobi_real(std::vector<double> A, int n, std::vector<double>& eval, std::v
   eval.swap(es); V.swap(Vs);
 }
 
+// ---- general (non-symmetric) eigenvalues via complex Hessenberg QR ----
+using cd = std::complex<double>;
+
+// Complex Givens: c real, s, r with [[c, conj(s)],[-s, c]] [f;g] = [r;0].
+void zlartg(cd f, cd g, double& c, cd& s, cd& r) {
+  double af = std::abs(f), ag = std::abs(g);
+  if (ag == 0) { c = 1; s = 0; r = f; }
+  else if (af == 0) { c = 0; s = g / cd(ag); r = cd(ag); }
+  else { double den = std::sqrt(af * af + ag * ag); c = af / den; s = (cd(c) * g) / f; r = (f / cd(af)) * cd(den); }
+}
+
+void hessenberg(std::vector<cd>& H, int n) {
+  for (int k = 0; k < n - 2; ++k) {
+    double xnorm = 0; for (int i = k + 1; i < n; ++i) xnorm += std::norm(H[i * n + k]); xnorm = std::sqrt(xnorm);
+    if (xnorm == 0) continue;
+    cd a0 = H[(k + 1) * n + k]; double r0 = std::abs(a0);
+    cd alpha = -(r0 == 0 ? cd(1) : a0 / cd(r0)) * cd(xnorm);
+    std::vector<cd> v(n, cd(0));
+    for (int i = k + 1; i < n; ++i) v[i] = H[i * n + k];
+    v[k + 1] -= alpha;
+    double vn = 0; for (int i = k + 1; i < n; ++i) vn += std::norm(v[i]);
+    if (vn == 0) continue;
+    cd beta = cd(2.0 / vn);
+    for (int j = 0; j < n; ++j) { cd s(0); for (int i = k + 1; i < n; ++i) s += std::conj(v[i]) * H[i * n + j]; s *= beta; for (int i = k + 1; i < n; ++i) H[i * n + j] -= v[i] * s; }
+    for (int i = 0; i < n; ++i) { cd s(0); for (int j = k + 1; j < n; ++j) s += H[i * n + j] * v[j]; s *= beta; for (int j = k + 1; j < n; ++j) H[i * n + j] -= s * std::conj(v[j]); }
+  }
+}
+
+void qr_step(std::vector<cd>& H, int n, int lo, int hi, cd mu) {
+  for (int i = lo; i <= hi; ++i) H[i * n + i] -= mu;
+  std::vector<double> cs; std::vector<cd> ss;
+  for (int i = lo; i < hi; ++i) {
+    double c; cd s, r;
+    zlartg(H[i * n + i], H[(i + 1) * n + i], c, s, r);
+    cs.push_back(c); ss.push_back(s);
+    for (int j = i; j < n; ++j) { cd x = H[i * n + j], y = H[(i + 1) * n + j]; H[i * n + j] = c * x + std::conj(s) * y; H[(i + 1) * n + j] = -s * x + c * y; }
+  }
+  for (int i = lo; i < hi; ++i) {
+    double c = cs[i - lo]; cd s = ss[i - lo];
+    for (int r = 0; r <= hi; ++r) { cd x = H[r * n + i], y = H[r * n + (i + 1)]; H[r * n + i] = c * x + s * y; H[r * n + (i + 1)] = -std::conj(s) * x + c * y; }
+  }
+  for (int i = lo; i <= hi; ++i) H[i * n + i] += mu;
+}
+
+std::vector<cd> schur_eigenvalues(std::vector<cd> H, int n) {
+  hessenberg(H, n);
+  std::vector<cd> w(n, cd(0));
+  int hi = n - 1, iter = 0, maxiter = 200 * std::max(n, 1);
+  while (hi > 0) {
+    int lo = hi;
+    while (lo > 0) {
+      double sub = std::abs(H[lo * n + lo - 1]);
+      double dg = std::abs(H[(lo - 1) * n + lo - 1]) + std::abs(H[lo * n + lo]);
+      if (sub <= 1e-15 * (dg == 0 ? 1.0 : dg)) { H[lo * n + lo - 1] = 0; break; }
+      --lo;
+    }
+    if (lo == hi) { w[hi] = H[hi * n + hi]; --hi; iter = 0; continue; }
+    if (lo == hi - 1) {
+      cd a = H[lo * n + lo], b = H[lo * n + hi], c = H[hi * n + lo], d = H[hi * n + hi];
+      cd tr = a + d, dt = a * d - b * c, disc = std::sqrt(tr * tr - cd(4) * dt);
+      w[lo] = (tr + disc) / cd(2); w[hi] = (tr - disc) / cd(2);
+      hi -= 2; iter = 0; continue;
+    }
+    if (iter++ > maxiter) { for (int i = 0; i <= hi; ++i) w[i] = H[i * n + i]; break; }
+    cd a = H[(hi - 1) * n + (hi - 1)], b = H[(hi - 1) * n + hi], c = H[hi * n + (hi - 1)], d = H[hi * n + hi];
+    cd tr = a + d, dt = a * d - b * c, disc = std::sqrt(tr * tr - cd(4) * dt);
+    cd mu1 = (tr + disc) / cd(2), mu2 = (tr - disc) / cd(2);
+    cd mu = std::abs(mu1 - d) < std::abs(mu2 - d) ? mu1 : mu2;
+    qr_step(H, n, lo, hi, mu);
+  }
+  if (hi == 0) w[0] = H[0];
+  return w;
+}
+
+std::vector<cd> inverse_iteration(const std::vector<cd>& A, int n, cd lambda) {
+  cd shift = lambda + cd(1e-10 * (std::abs(lambda) + 1.0));
+  std::vector<cd> x(n, cd(1.0 / std::sqrt((double)n)));
+  for (int it = 0; it < 4; ++it) {
+    std::vector<cd> B = A;
+    for (int i = 0; i < n; ++i) B[i * n + i] -= shift;
+    std::vector<int> piv; double sgn;
+    if (!lu_decompose<cd>(B, n, piv, sgn)) { shift += cd(1e-8); continue; }
+    std::vector<cd> rhs = x;
+    lu_solve<cd>(B, n, piv, rhs, 1);
+    double nrm = 0; for (auto& e : rhs) nrm += std::norm(e); nrm = std::sqrt(nrm);
+    if (nrm > 0) for (auto& e : rhs) e /= cd(nrm);
+    x = rhs;
+  }
+  return x;
+}
+
 }  // namespace
 
 ndarray dot(const ndarray& a, const ndarray& b) {
@@ -424,6 +515,58 @@ EighResult eigh(const ndarray& a) {
   hermitian_eig(a, eval, &evec, k);
   DType real_out = (k.out == kComplex64 || k.out == kFloat32) ? kFloat32 : kFloat64;
   return {real_evals(eval, real_out), evec};
+}
+
+namespace {
+bool eig_is_real(const ndarray& a, const std::vector<cd>& w) {
+  if (a.dtype().is_complex()) return false;
+  double mi = 0, ma = 0;
+  for (auto& e : w) { mi = std::max(mi, std::abs(e.imag())); ma = std::max(ma, std::abs(e)); }
+  return mi <= 1e-9 * (1.0 + ma);
+}
+}  // namespace
+
+ndarray eigvals(const ndarray& a) {
+  require_square(a);
+  const int n = static_cast<int>(a.shape()[0]);
+  std::vector<cd> A = to_vec<cd>(a, kComplex128);
+  std::vector<cd> w = schur_eigenvalues(A, n);
+  ndarray r(Shape{(int64_t)n}, kComplex128, Order::C);
+  for (int i = 0; i < n; ++i) r.set_item<cd>({i}, w[i]);
+  if (eig_is_real(a, w)) return r.astype(a.dtype() == kFloat32 ? kFloat32 : kFloat64);
+  return r.astype(a.dtype() == kComplex64 ? kComplex64 : kComplex128);
+}
+
+EigResult eig(const ndarray& a) {
+  require_square(a);
+  const int n = static_cast<int>(a.shape()[0]);
+  std::vector<cd> A = to_vec<cd>(a, kComplex128);
+  std::vector<cd> w = schur_eigenvalues(A, n);
+  const bool realOut = eig_is_real(a, w);
+  std::vector<cd> V(static_cast<size_t>(n) * n);
+  for (int c = 0; c < n; ++c) {
+    std::vector<cd> v = inverse_iteration(A, n, w[c]);
+    if (realOut) {                                  // align phase so the vector is real
+      int im = 0; double best = 0;
+      for (int i = 0; i < n; ++i) if (std::abs(v[i]) > best) { best = std::abs(v[i]); im = i; }
+      cd ph = best > 0 ? std::conj(v[im]) / cd(std::abs(v[im])) : cd(1);
+      for (int i = 0; i < n; ++i) v[i] *= ph;
+    }
+    for (int i = 0; i < n; ++i) V[i * n + c] = v[i];
+  }
+  ndarray ev(Shape{(int64_t)n}, kComplex128, Order::C);
+  for (int i = 0; i < n; ++i) ev.set_item<cd>({i}, w[i]);
+  ndarray vv(Shape{(int64_t)n, (int64_t)n}, kComplex128, Order::C);
+  for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) vv.set_item<cd>({i, j}, V[i * n + j]);
+  EigResult out;
+  if (realOut) {
+    DType ro = a.dtype() == kFloat32 ? kFloat32 : kFloat64;
+    out.eigenvalues = ev.astype(ro); out.eigenvectors = vv.astype(ro);
+  } else {
+    DType co = a.dtype() == kComplex64 ? kComplex64 : kComplex128;
+    out.eigenvalues = ev.astype(co); out.eigenvectors = vv.astype(co);
+  }
+  return out;
 }
 
 namespace {

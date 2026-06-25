@@ -22,6 +22,7 @@ struct SignLogDet { ndarray sign; ndarray logabsdet; };
 struct QRResult { ndarray q; ndarray r; };
 struct EighResult { ndarray eigenvalues; ndarray eigenvectors; };
 struct SVDResult { ndarray u; ndarray s; ndarray vh; };
+struct EigResult { ndarray eigenvalues; ndarray eigenvectors; };
 struct LstsqResult { ndarray solution; ndarray residuals; ndarray rank; ndarray singular_values; };
 
 NUMPP_API ndarray solve(const ndarray& a, const ndarray& b);
@@ -37,6 +38,10 @@ NUMPP_API QRResult qr(const ndarray& a, const std::string& mode = "reduced");
 // Hermitian/symmetric eigensolver, eigenvalues ascending.
 NUMPP_API EighResult eigh(const ndarray& a);
 NUMPP_API ndarray eigvalsh(const ndarray& a);
+
+// General (non-symmetric) eigensolver. Eigenvalues/eigenvectors may be complex.
+NUMPP_API ndarray eigvals(const ndarray& a);
+NUMPP_API EigResult eig(const ndarray& a);
 
 NUMPP_API SVDResult svd(const ndarray& a, bool full_matrices = true);
 NUMPP_API ndarray svdvals(const ndarray& a);                 // singular values, descending

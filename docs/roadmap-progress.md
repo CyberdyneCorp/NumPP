@@ -53,7 +53,7 @@ complete to a high parity bar; genuine long-tail tracked in #3.
 - [x] cholesky (+ not-PD -> linalg_error)
 - [x] qr (Householder, reduced/complete), eigh/eigvalsh (Jacobi; complex via 2n embedding), norm (vector + matrix 1/inf/fro)
 - [x] svd (Jacobi on Gram matrix; reduced+full), svdvals, pinv, matrix_rank, lstsq, norm 2/-2/nuc
-- [ ] eig/eigvals (general nonsymmetric)
+- [x] eig/eigvals (general; complex Hessenberg QR + inverse iteration)
 - [ ] LAPACK path behind NUMPP_WITH_LAPACK (weak vtable)
 
 Increment 1: 8 linalg test cases (67 total / 439 checks), 0 divergences,
