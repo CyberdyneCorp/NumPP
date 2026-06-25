@@ -13,6 +13,7 @@ add_library(numpp
     sorting/sorting.cpp
     strings/strings.cpp
     datetime/datetime.cpp
+    struct/struct.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
