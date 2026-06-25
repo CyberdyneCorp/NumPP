@@ -1,5 +1,6 @@
 #include "numpp/io/format.hpp"
 
+#include "numpp/datetime/datetime.hpp"
 #include "numpp/io/npy.hpp"
 #include "numpp/strings/strings.hpp"
 
@@ -40,6 +41,13 @@ std::vector<std::string> element_strings(const ndarray& a) {
   const char k = c.dtype().kind();
   if (k == 'U' || k == 'S') {
     for (int64_t i = 0; i < n; ++i) out[i] = "'" + get_string(c, i) + "'";
+    return out;
+  }
+  if (k == 'M' || k == 'm') {
+    for (int64_t i = 0; i < n; ++i) {
+      std::string v = format_datetime(c.dtype(), dt_get(c, i));
+      out[i] = k == 'M' ? "'" + v + "'" : v;
+    }
     return out;
   }
   if (k == 'i' || k == 'u' || c.dtype() == kBool) {
@@ -150,8 +158,13 @@ std::string array_repr(const ndarray& a) {
   std::string body;
   if (a.size() == 0) body = "[]";
   else body = a.ndim() == 0 ? format_body(a, ", ", 6) : format_body(a, ", ", 6);
-  if (a.dtype().is_extended())
-    return "array(" + body + ", dtype='" + dtype_to_descr(a.dtype()) + "')";
+  if (a.dtype().is_extended()) {
+    const char k = a.dtype().kind();
+    std::string suffix = (k == 'M') ? std::string("'datetime64[") + a.dtype().meta()->unit + "]'"
+                       : (k == 'm') ? std::string("'timedelta64[") + a.dtype().meta()->unit + "]'"
+                                    : "'" + dtype_to_descr(a.dtype()) + "'";
+    return "array(" + body + ", dtype=" + suffix + ")";
+  }
   if (!is_default_dtype(a.dtype()))
     return "array(" + body + ", dtype=" + a.dtype().name() + ")";
   return "array(" + body + ")";

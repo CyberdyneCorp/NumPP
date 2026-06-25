@@ -18,4 +18,5 @@
 #include "numpp/io/format.hpp"
 #include "numpp/sorting/sorting.hpp"
 #include "numpp/strings/strings.hpp"
+#include "numpp/datetime/datetime.hpp"
 #include "numpp/backend/backend.hpp"

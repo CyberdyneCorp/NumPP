@@ -99,7 +99,7 @@ Increment 1: 7 cases (153 total / 776 checks), 0 divergences, clang+gcc+ASan gre
 
 - [x] Core DType extended with shared metadata side-channel (numeric dtypes unchanged; 887 checks green)
 - [x] (a) strings 'U'/'S': creation, get/set, equality, printing, .npy descr
-- [ ] (b) datetime64/timedelta64 (units, ISO parse/format, arithmetic)
+- [x] (b) datetime64/timedelta64 (units D/s, ISO parse/format, arithmetic, repr, .npy)
 - [ ] (c) structured/record dtypes (field table, a['name'] views)
 
 Increment (a): 5 cases (166 total / 910 checks), 0 divergences, clang+gcc+ASan green.

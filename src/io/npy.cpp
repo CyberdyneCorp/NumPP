@@ -1,5 +1,7 @@
 #include "numpp/io/npy.hpp"
 
+#include "numpp/datetime/datetime.hpp"
+
 #include <cctype>
 #include <cstring>
 #include <fstream>
@@ -31,6 +33,8 @@ std::string shape_tuple(const Shape& s) {
 std::string dtype_to_descr(DType d) {
   if (d.kind() == 'U') return "<U" + std::to_string(d.itemsize() / 4);
   if (d.kind() == 'S') return "|S" + std::to_string(d.itemsize());
+  if (d.kind() == 'M') return std::string("<M8[") + d.meta()->unit + "]";
+  if (d.kind() == 'm') return std::string("<m8[") + d.meta()->unit + "]";
   for (const auto& e : kDescrs) if (e.dt == d) return e.descr;
   throw type_error("npy: unsupported dtype");
 }
@@ -39,6 +43,12 @@ DType descr_to_dtype(const std::string& descr) {
   if (!suffix.empty() && (suffix[0] == 'U' || suffix[0] == 'S')) {
     int64_t n = std::stoll(suffix.substr(1));
     return suffix[0] == 'U' ? make_string(n) : make_bytes(n);
+  }
+  if (!suffix.empty() && (suffix[0] == 'M' || suffix[0] == 'm')) {  // M8[D] / m8[s]
+    size_t lb = suffix.find('['), rb = suffix.find(']');
+    char unit = lb != std::string::npos ? suffix[lb + 1] : 'D';
+    (void)rb;
+    return suffix[0] == 'M' ? make_datetime(unit) : make_timedelta(unit);
   }
   for (const auto& e : kDescrs) if (std::string(e.descr).substr(1) == suffix) return e.dt;
   throw type_error("npy: unsupported descr '" + descr + "'");
