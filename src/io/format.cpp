@@ -35,97 +35,108 @@ std::string fmt_fixed(double v) {  // %.8f with trailing-zero trim, keeping the 
 bool is_default_dtype(DType d) { return d == kInt64 || d == kFloat64 || d == kComplex128 || d == kBool; }
 
 // Produce padded element strings (C order) for the whole array.
+// Per-kind element formatters. element_strings() is just a dispatcher.
+std::vector<std::string> fmt_string_kind(const ndarray& c, int64_t n) {
+  std::vector<std::string> out(n);
+  for (int64_t i = 0; i < n; ++i) out[i] = "'" + get_string(c, i) + "'";
+  return out;
+}
+std::vector<std::string> fmt_datetime_kind(const ndarray& c, int64_t n, char k) {
+  std::vector<std::string> out(n);
+  for (int64_t i = 0; i < n; ++i) {
+    std::string v = format_datetime(c.dtype(), dt_get(c, i));
+    out[i] = k == 'M' ? "'" + v + "'" : v;
+  }
+  return out;
+}
+std::string fmt_field_scalar(const ndarray& v, int64_t i) {
+  std::string s;
+  visit_dtype(v.dtype().id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_same_v<T, bool>) s = v.template item<bool>({i}) ? "True" : "False";
+    else if constexpr (std::is_integral_v<T>) s = std::to_string(static_cast<long long>(v.template item<T>({i})));
+    else if constexpr (std::is_same_v<T, half>) s = fmt_fixed(static_cast<double>(static_cast<float>(v.template item<half>({i}))));
+    else if constexpr (std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>) { auto z = v.template item<T>({i}); s = fmt_fixed(z.real()) + (z.imag() < 0 ? "-" : "+") + fmt_fixed(std::abs(z.imag())) + "j"; }
+    else s = fmt_fixed(static_cast<double>(v.template item<T>({i})));
+  });
+  return s;
+}
+std::vector<std::string> fmt_struct_kind(const ndarray& c, int64_t n) {
+  std::vector<std::string> out(n);
+  std::vector<ndarray> fv;
+  for (const auto& f : c.dtype().meta()->fields) fv.push_back(field_view(c, f.name));
+  for (int64_t i = 0; i < n; ++i) {
+    std::string rec = "(";
+    for (size_t j = 0; j < fv.size(); ++j) { rec += fmt_field_scalar(fv[j], i); if (j + 1 < fv.size()) rec += ", "; }
+    out[i] = rec + ")";
+  }
+  return out;
+}
+std::vector<std::string> fmt_int_kind(const ndarray& c, int64_t n) {
+  std::vector<std::string> out(n);
+  size_t w = 0;
+  visit_dtype(c.dtype().id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    const T* p = n ? c.typed_data<T>() : nullptr;
+    for (int64_t i = 0; i < n; ++i) {
+      if constexpr (std::is_same_v<T, bool>) out[i] = p[i] ? "True" : "False";
+      else if constexpr (std::is_integral_v<T>) out[i] = std::to_string(static_cast<long long>(p[i]));
+      w = std::max(w, out[i].size());
+    }
+  });
+  for (auto& s : out) s = rjust(s, w);
+  return out;
+}
+std::vector<std::string> fmt_float_kind(const ndarray& c, int64_t n) {
+  std::vector<std::string> out(n), lefts(n), rights(n), specials(n);
+  size_t pl = 0, pr = 0;
+  auto val = [&](int64_t i) -> double {
+    if (c.dtype() == kFloat16) return static_cast<double>(static_cast<float>(c.typed_data<half>()[i]));
+    if (c.dtype() == kFloat32) return static_cast<double>(c.typed_data<float>()[i]);
+    return c.typed_data<double>()[i];
+  };
+  for (int64_t i = 0; i < n; ++i) {
+    std::string s = fmt_fixed(val(i));
+    if (s == "nan" || s == "inf" || s == "-inf") { specials[i] = s; continue; }
+    size_t dot = s.find('.');
+    lefts[i] = s.substr(0, dot); rights[i] = s.substr(dot + 1);
+    pl = std::max(pl, lefts[i].size()); pr = std::max(pr, rights[i].size());
+  }
+  const size_t w = pl + 1 + pr;
+  for (int64_t i = 0; i < n; ++i)
+    out[i] = !specials[i].empty() ? rjust(specials[i], w) : rjust(lefts[i], pl) + "." + ljust(rights[i], pr);
+  return out;
+}
+std::vector<std::string> fmt_complex_kind(const ndarray& c, int64_t n) {
+  std::vector<std::string> out(n), rL(n), rR(n), iL(n), iR(n), sign(n);
+  size_t rpl = 0, rpr = 0, ipl = 0, ipr = 0;
+  auto split = [](const std::string& s, size_t& pl, size_t& pr, std::string& L, std::string& R) {
+    size_t dot = s.find('.');
+    if (dot == std::string::npos) { L = s; R = ""; } else { L = s.substr(0, dot); R = s.substr(dot + 1); }
+    pl = std::max(pl, L.size()); pr = std::max(pr, R.size());
+  };
+  for (int64_t i = 0; i < n; ++i) {
+    std::complex<double> z = c.dtype() == kComplex64
+        ? std::complex<double>(c.typed_data<std::complex<float>>()[i].real(), c.typed_data<std::complex<float>>()[i].imag())
+        : c.typed_data<std::complex<double>>()[i];
+    split(fmt_fixed(z.real()), rpl, rpr, rL[i], rR[i]);
+    split(fmt_fixed(std::abs(z.imag())), ipl, ipr, iL[i], iR[i]);
+    sign[i] = (z.imag() < 0 || (z.imag() == 0 && std::signbit(z.imag()))) ? "-" : "+";
+  }
+  for (int64_t i = 0; i < n; ++i)
+    out[i] = rjust(rL[i], rpl) + "." + ljust(rR[i], rpr) + sign[i] + rjust(iL[i], ipl) + "." + ljust(iR[i], ipr) + "j";
+  return out;
+}
 std::vector<std::string> element_strings(const ndarray& a) {
   ndarray c = a.ascontiguousarray();
   const int64_t n = c.size();
-  std::vector<std::string> out(n);
   const char k = c.dtype().kind();
-  if (k == 'U' || k == 'S') {
-    for (int64_t i = 0; i < n; ++i) out[i] = "'" + get_string(c, i) + "'";
-    return out;
-  }
-  if (k == 'M' || k == 'm') {
-    for (int64_t i = 0; i < n; ++i) {
-      std::string v = format_datetime(c.dtype(), dt_get(c, i));
-      out[i] = k == 'M' ? "'" + v + "'" : v;
-    }
-    return out;
-  }
-  if (k == 'V') {  // structured: each record as a tuple of its fields
-    const auto& fields = c.dtype().meta()->fields;
-    std::vector<ndarray> fv;
-    for (const auto& f : fields) fv.push_back(field_view(c, f.name));
-    auto fmt_scalar = [](const ndarray& v, int64_t i) {
-      std::string s;
-      visit_dtype(v.dtype().id(), [&](auto tag) {
-        using T = typename decltype(tag)::type;
-        if constexpr (std::is_same_v<T, bool>) s = v.template item<bool>({i}) ? "True" : "False";
-        else if constexpr (std::is_integral_v<T>) s = std::to_string(static_cast<long long>(v.template item<T>({i})));
-        else if constexpr (std::is_same_v<T, half>) s = fmt_fixed(static_cast<double>(static_cast<float>(v.template item<half>({i}))));
-        else if constexpr (std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>) { auto z = v.template item<T>({i}); s = fmt_fixed(z.real()) + (z.imag() < 0 ? "-" : "+") + fmt_fixed(std::abs(z.imag())) + "j"; }
-        else s = fmt_fixed(static_cast<double>(v.template item<T>({i})));
-      });
-      return s;
-    };
-    for (int64_t i = 0; i < n; ++i) {
-      std::string rec = "(";
-      for (size_t j = 0; j < fv.size(); ++j) { rec += fmt_scalar(fv[j], i); if (j + 1 < fv.size()) rec += ", "; }
-      out[i] = rec + ")";
-    }
-    return out;
-  }
-  if (k == 'i' || k == 'u' || c.dtype() == kBool) {
-    size_t w = 0;
-    visit_dtype(c.dtype().id(), [&](auto tag) {
-      using T = typename decltype(tag)::type;
-      const T* p = n ? c.typed_data<T>() : nullptr;
-      for (int64_t i = 0; i < n; ++i) {
-        if constexpr (std::is_same_v<T, bool>) out[i] = p[i] ? "True" : "False";
-        else if constexpr (std::is_integral_v<T>) out[i] = std::to_string(static_cast<long long>(p[i]));
-        w = std::max(w, out[i].size());
-      }
-    });
-    for (auto& s : out) s = rjust(s, w);
-  } else if (k == 'f') {
-    std::vector<std::string> lefts(n), rights(n);
-    size_t pl = 0, pr = 0;
-    std::vector<std::string> specials(n);
-    auto val = [&](int64_t i) -> double {
-      if (c.dtype() == kFloat16) return static_cast<double>(static_cast<float>(c.typed_data<half>()[i]));
-      if (c.dtype() == kFloat32) return static_cast<double>(c.typed_data<float>()[i]);
-      return c.typed_data<double>()[i];
-    };
-    for (int64_t i = 0; i < n; ++i) {
-      std::string s = fmt_fixed(val(i));
-      if (s == "nan" || s == "inf" || s == "-inf") { specials[i] = s; continue; }
-      size_t dot = s.find('.');
-      lefts[i] = s.substr(0, dot); rights[i] = s.substr(dot + 1);
-      pl = std::max(pl, lefts[i].size()); pr = std::max(pr, rights[i].size());
-    }
-    size_t w = pl + 1 + pr;
-    for (int64_t i = 0; i < n; ++i)
-      out[i] = !specials[i].empty() ? rjust(specials[i], w) : rjust(lefts[i], pl) + "." + ljust(rights[i], pr);
-  } else {  // complex
-    std::vector<std::string> rs(n), is_(n);
-    size_t rpl = 0, rpr = 0, ipl = 0, ipr = 0;
-    auto split = [](const std::string& s, size_t& pl, size_t& pr, std::string& L, std::string& R) {
-      size_t dot = s.find('.');
-      if (dot == std::string::npos) { L = s; R = ""; } else { L = s.substr(0, dot); R = s.substr(dot + 1); }
-      pl = std::max(pl, L.size()); pr = std::max(pr, R.size());
-    };
-    std::vector<std::string> rL(n), rR(n), iL(n), iR(n);
-    for (int64_t i = 0; i < n; ++i) {
-      std::complex<double> z = c.dtype() == kComplex64
-          ? std::complex<double>(c.typed_data<std::complex<float>>()[i].real(), c.typed_data<std::complex<float>>()[i].imag())
-          : c.typed_data<std::complex<double>>()[i];
-      split(fmt_fixed(z.real()), rpl, rpr, rL[i], rR[i]);
-      split(fmt_fixed(std::abs(z.imag())), ipl, ipr, iL[i], iR[i]);
-      is_[i] = z.imag() < 0 || (z.imag() == 0 && std::signbit(z.imag())) ? "-" : "+";
-    }
-    for (int64_t i = 0; i < n; ++i)
-      out[i] = rjust(rL[i], rpl) + "." + ljust(rR[i], rpr) + is_[i] + rjust(iL[i], ipl) + "." + ljust(iR[i], ipr) + "j";
-  }
-  return out;
+  if (k == 'U' || k == 'S') return fmt_string_kind(c, n);
+  if (k == 'M' || k == 'm') return fmt_datetime_kind(c, n, k);
+  if (k == 'V') return fmt_struct_kind(c, n);
+  if (k == 'i' || k == 'u' || c.dtype() == kBool) return fmt_int_kind(c, n);
+  if (k == 'f') return fmt_float_kind(c, n);
+  return fmt_complex_kind(c, n);
 }
 
 struct Layout {

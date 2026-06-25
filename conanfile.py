@@ -4,7 +4,7 @@ from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 
 class NumPPConan(ConanFile):
     name = "numpp"
-    version = "0.1.0"
+    version = "1.0.0"
     license = "MIT"
     author = "Leonardo Araujo dos Santos"
     url = "https://github.com/leonardoaraujosantos/NumPP"

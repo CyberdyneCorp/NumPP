@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
+#include <limits>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -612,6 +613,41 @@ ndarray any(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
 }
 ndarray all(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   return reduce(a, RedOp::All, axis, keepdims, std::nullopt);
+}
+
+// NaN-ignoring reductions (compose existing ufuncs; NaN treated as identity).
+ndarray nansum(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
+  return sum(where(isnan(a), zeros_like(a), a), axis, keepdims);
+}
+ndarray nanmean(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
+  ndarray isn = isnan(a);
+  ndarray s = sum(where(isn, zeros_like(a), a), axis, keepdims).astype(kFloat64);
+  ndarray cnt = sum(logical_not(isn), axis, keepdims).astype(kFloat64);
+  return divide(s, cnt);
+}
+ndarray nanmin(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
+  if (!a.dtype().is_floating()) return amin(a, axis, keepdims);
+  double inf = std::numeric_limits<double>::infinity();
+  return amin(where(isnan(a), full_like(a, inf), a), axis, keepdims);
+}
+ndarray nanmax(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
+  if (!a.dtype().is_floating()) return amax(a, axis, keepdims);
+  double inf = std::numeric_limits<double>::infinity();
+  return amax(where(isnan(a), full_like(a, -inf), a), axis, keepdims);
+}
+ndarray nanvar(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
+  ndarray isn = isnan(a);
+  ndarray cnt = sum(logical_not(isn), axis, /*keepdims=*/true).astype(kFloat64);
+  ndarray af = a.astype(kFloat64);
+  ndarray mean = divide(sum(where(isn, zeros_like(af), af), axis, true), cnt);
+  ndarray dev = where(isn, zeros_like(af), square(subtract(af, mean)));
+  ndarray ssum = sum(dev, axis, keepdims);
+  ndarray denom = subtract(keepdims ? cnt : sum(logical_not(isn), axis, false).astype(kFloat64),
+                           scalar_like(static_cast<double>(ddof), kFloat64, true));
+  return divide(ssum, denom);
+}
+ndarray nanstd(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
+  return sqrt(nanvar(a, axis, keepdims, ddof));
 }
 
 ndarray fmin(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Fmin); }

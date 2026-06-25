@@ -122,6 +122,14 @@ NUMPP_API ndarray var(const ndarray& a, std::optional<int64_t> axis = std::nullo
 NUMPP_API ndarray std(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false,
                       int64_t ddof = 0);
 NUMPP_API ndarray any(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
+
+// NaN-ignoring reductions (issue #3).
+NUMPP_API ndarray nansum(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
+NUMPP_API ndarray nanmean(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
+NUMPP_API ndarray nanmin(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
+NUMPP_API ndarray nanmax(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
+NUMPP_API ndarray nanvar(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false, int64_t ddof = 0);
+NUMPP_API ndarray nanstd(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false, int64_t ddof = 0);
 NUMPP_API ndarray all(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
 
 // 0-d array carrying a Python-like scalar, using NumPy NEP-50 weak promotion
