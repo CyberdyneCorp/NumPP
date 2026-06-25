@@ -27,6 +27,7 @@ option(NUMPP_WITH_METAL         "Enable optional Metal GPU backend" OFF)
 option(NUMPP_WITH_VULKAN        "Enable optional Vulkan GPU backend" OFF)
 option(NUMPP_WITH_CUDA          "Enable optional CUDA GPU backend"  OFF)
 option(NUMPP_WITH_OPENCL        "Enable optional OpenCL GPU backend" OFF)
+option(NUMPP_WITH_REFGPU        "Enable CPU-reference GPU device (testing)" OFF)
 
 # -----------------------------------------------------------------------------
 # Project-wide settings

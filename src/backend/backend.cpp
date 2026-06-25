@@ -84,6 +84,7 @@ const char* backend_name(Backend b) {
     case Backend::Auto: return "auto";
     case Backend::Cpu: return "cpu";
     case Backend::Blas: return "blas";
+    case Backend::Device: return "device";
     case Backend::Metal: return "metal";
     case Backend::Vulkan: return "vulkan";
     case Backend::Cuda: return "cuda";
@@ -109,6 +110,7 @@ bool CapabilityRegistry::gpu_available(Backend b) const {
 }
 
 Backend last_backend() { return t_last; }
+void set_last_backend(Backend b) { t_last = b; }
 
 ndarray matmul(const ndarray& a, const ndarray& b, Backend forced) {
   if (a.ndim() != 2 || b.ndim() != 2) throw value_error("matmul requires 2-D arrays");

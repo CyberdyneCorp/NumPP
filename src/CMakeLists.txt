@@ -28,6 +28,13 @@ else()
 endif()
 
 # LAPACK backend (real vs null) — same weak-vtable model as BLAS.
+# GPU backend (CPU-reference 'device' vs null) — weak-vtable model.
+if(NUMPP_WITH_REFGPU)
+    target_sources(numpp PRIVATE backend/refgpu_backend.cpp)
+else()
+    target_sources(numpp PRIVATE backend/gpu_null.cpp)
+endif()
+
 if(NUMPP_WITH_LAPACK)
     target_sources(numpp PRIVATE backend/lapack_backend.cpp)
     find_package(LAPACK REQUIRED)
