@@ -13,8 +13,8 @@ PR/merge/archive. Durable tracker (survives context resets).
 | 4 | advanced-indexing (take/take_along_axis/put/diagonal/argwhere/compress/choose/select/ravel_multi_index) | 1 | ✅ merged+archived |
 | 5 | ufuncs-extras (around/gcd/lcm/sinc/nan_to_num/logaddexp/float_power/modf/frexp/unwrap/i0/...) | 1 | ✅ merged+archived |
 | 6 | signal-poly (convolve/correlate/interp; polyval/polyfit/roots/poly/polyder/polyint) | 1 | ✅ merged+archived |
-| 7 | sorting-extras (lexsort/sort_complex) | 1 | 🟡 next |
-| 8 | einsum (+tensordot/cross/cond/multi_dot) | 2 | ⬜ |
+| 7 | sorting-extras (lexsort/sort_complex/searchsorted-sorter) | 1 | ✅ merged+archived |
+| 8 | einsum (+tensordot/cross/cond/multi_dot) | 2 | 🟡 next |
 | 9 | random-distributions (full set + Philox/SFC64) | 2 | ⬜ |
 | 10 | polynomial-package (Polynomial/Chebyshev/...) | 2 | ⬜ |
 | 11 | text-io (savetxt/loadtxt/genfromtxt/print-options) | 2 | ⬜ |

@@ -7,6 +7,7 @@ add_executable(numpp_tests
     test_indexing.cpp
     test_mathx.cpp
     test_poly.cpp
+    test_sorting_extra.cpp
     test_ndarray.cpp
     test_creation.cpp
     test_backend.cpp
