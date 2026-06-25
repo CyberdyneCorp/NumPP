@@ -13,7 +13,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
 | 5 | fft | add-fft | ✅ merged+archived |
 | 6 | random | add-random | ✅ merged+archived |
-| 7 | I/O (.npy/.npz, printing/repr) | add-io | 🟡 in progress |
+| 7 | I/O (.npy/.npz, printing/repr) | add-io | ✅ merged+archived |
 | 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
 | 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
 | 10 | GPU kernel coverage beyond GEMM | — | ⬜ |
@@ -83,7 +83,7 @@ Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
 
 - [x] NPY save/load (all dtypes, C/F order, v1.0 write/v1.0+v2.0 read); oracle uses numpp::load now
 - [x] NPZ savez/savez_compressed/load (minimal ZIP STORED+CRC32; numpy-interop both ways)
-- [ ] array printing (str/repr, summarization, dtype suffix)
+- [x] array printing (str/repr, int/float/bool/complex, 1d/2d/3d, summarization, dtype suffix; fixed-notation only -> #11)
 
 Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 divergences.
 
@@ -92,6 +92,7 @@ Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 d
 | # | Issue | Phase | Regression test | Status |
 |---|-------|------:|-----------------|--------|
 | #2 | minimum/maximum didn't propagate NaN | 3 | test_ufunc2 "minimum/maximum propagate NaN" | fixed |
+| #11 | array printing: no scientific notation | 7 | test_io3 common cases | open |
 | #8 | distributions not bit-exact (no ziggurat tables) | 6 | test_random3 moments | open |
 | #7 | choice(replace=False) not bit-exact w/ numpy | 6 | test_random2 valid-sample | open |
 | #3 | Phase 3 parity tracking (out=/where=, nan-reductions, argmin/cumsum) | 3 | — | open |

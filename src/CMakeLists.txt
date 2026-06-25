@@ -9,6 +9,7 @@ add_library(numpp
     random/random.cpp
     io/npy.cpp
     io/npz.cpp
+    io/format.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
