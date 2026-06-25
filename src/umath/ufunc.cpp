@@ -1,8 +1,12 @@
 #include "numpp/umath/ufunc.hpp"
 
+#include "numpp/backend/backend.hpp"
+#include "numpp/backend/gpu_vtable.hpp"
 #include "numpp/core/creation.hpp"
 
 #include <algorithm>
+#include <cstdlib>
+#include <functional>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -488,13 +492,40 @@ ndarray reduce(const ndarray& a, RedOp op, std::optional<int64_t> axis, bool kee
   return pdt == cdt ? shaped : shaped.astype(cdt);
 }
 
+// ---- optional GPU dispatch (weak vtable; CPU kernel is always the fallback) ----
+bool gpu_dtype_ok(DType d) { return d == kFloat32 || d == kFloat64 || d == kComplex64 || d == kComplex128; }
+int64_t gpu_min() {
+  if (const char* e = std::getenv("NUMPP_GPU_MIN")) { char* end = nullptr; long long v = std::strtoll(e, &end, 10); if (end != e && v >= 0) return v; }
+  return 1 << 16;
+}
+ndarray gpu_or_binary(const ndarray& a, const ndarray& b, BinOp op, int gop, const std::function<ndarray()>& cpu) {
+  const GpuVTable* vt = gpu_vtable();
+  DType out_dt = arith_out(op, a.dtype(), b.dtype());
+  if (vt && gpu_dtype_ok(out_dt) && a.shape() == b.shape() && a.size() >= gpu_min()) {
+    ndarray ac = a.astype(out_dt).ascontiguousarray(), bc = b.astype(out_dt).ascontiguousarray();
+    ndarray out(ac.shape(), out_dt, Order::C);
+    if (vt->elementwise_binary(gop, out_dt.id(), out.size(), ac.bytes(), bc.bytes(), out.bytes())) { set_last_backend(Backend::Device); return out; }
+  }
+  set_last_backend(Backend::Cpu);
+  return cpu();
+}
+ndarray gpu_or_unary(const ndarray& a, int gop, DType out_dt, const std::function<ndarray()>& cpu) {
+  const GpuVTable* vt = gpu_vtable();
+  if (vt && gpu_dtype_ok(out_dt) && a.size() >= gpu_min()) {
+    ndarray ac = a.astype(out_dt).ascontiguousarray();
+    ndarray out(ac.shape(), out_dt, Order::C);
+    if (vt->elementwise_unary(gop, out_dt.id(), out.size(), ac.bytes(), out.bytes())) { set_last_backend(Backend::Device); return out; }
+  }
+  set_last_backend(Backend::Cpu);
+  return cpu();
+}
 }  // namespace
 
 // ---- public API ----
-ndarray add(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Add); }
-ndarray subtract(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Sub); }
-ndarray multiply(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Mul); }
-ndarray divide(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Div); }
+ndarray add(const ndarray& a, const ndarray& b) { return gpu_or_binary(a, b, BinOp::Add, kGAdd, [&] { return binary(a, b, BinOp::Add); }); }
+ndarray subtract(const ndarray& a, const ndarray& b) { return gpu_or_binary(a, b, BinOp::Sub, kGSub, [&] { return binary(a, b, BinOp::Sub); }); }
+ndarray multiply(const ndarray& a, const ndarray& b) { return gpu_or_binary(a, b, BinOp::Mul, kGMul, [&] { return binary(a, b, BinOp::Mul); }); }
+ndarray divide(const ndarray& a, const ndarray& b) { return gpu_or_binary(a, b, BinOp::Div, kGDiv, [&] { return binary(a, b, BinOp::Div); }); }
 ndarray floor_divide(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::FloorDiv); }
 ndarray mod(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Mod); }
 ndarray power(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Power); }
@@ -533,14 +564,14 @@ ndarray invert(const ndarray& a) {
   return res;
 }
 
-ndarray negative(const ndarray& a) { return unary_same(a, UnOp::Neg); }
+ndarray negative(const ndarray& a) { return gpu_or_unary(a, kGNeg, a.dtype(), [&] { return unary_same(a, UnOp::Neg); }); }
 ndarray positive(const ndarray& a) { return unary_same(a, UnOp::Pos); }
 ndarray absolute(const ndarray& a) { return absolute_impl(a); }
 ndarray sign(const ndarray& a) { return unary_same(a, UnOp::Sign); }
 ndarray square(const ndarray& a) { return unary_same(a, UnOp::Square); }
 ndarray reciprocal(const ndarray& a) { return unary_same(a, UnOp::Recip); }
-ndarray sqrt(const ndarray& a) { return unary_float(a, FUn::Sqrt); }
-ndarray exp(const ndarray& a) { return unary_float(a, FUn::Exp); }
+ndarray sqrt(const ndarray& a) { return gpu_or_unary(a, kGSqrt, to_float(a.dtype()), [&] { return unary_float(a, FUn::Sqrt); }); }
+ndarray exp(const ndarray& a) { return gpu_or_unary(a, kGExp, to_float(a.dtype()), [&] { return unary_float(a, FUn::Exp); }); }
 ndarray log(const ndarray& a) { return unary_float(a, FUn::Log); }
 ndarray sin(const ndarray& a) { return unary_float(a, FUn::Sin); }
 ndarray cos(const ndarray& a) { return unary_float(a, FUn::Cos); }
@@ -548,11 +579,24 @@ ndarray tan(const ndarray& a) { return unary_float(a, FUn::Tan); }
 ndarray floor(const ndarray& a) { return unary_float(a, FUn::Floor); }
 ndarray ceil(const ndarray& a) { return unary_float(a, FUn::Ceil); }
 
+namespace {
+ndarray gpu_or_reduce(const ndarray& a, int gop, std::optional<int64_t> axis, bool keepdims,
+                      std::optional<DType> dt, const std::function<ndarray()>& cpu) {
+  const GpuVTable* vt = gpu_vtable();
+  if (!axis && !keepdims && !dt && vt && gpu_dtype_ok(a.dtype()) && a.size() >= gpu_min()) {
+    ndarray ac = a.ascontiguousarray();
+    ndarray out(Shape{}, a.dtype(), Order::C);
+    if (vt->reduce(gop, a.dtype().id(), ac.size(), ac.bytes(), out.bytes())) { set_last_backend(Backend::Device); return out; }
+  }
+  set_last_backend(Backend::Cpu);
+  return cpu();
+}
+}  // namespace
 ndarray sum(const ndarray& a, std::optional<int64_t> axis, bool keepdims, std::optional<DType> dt) {
-  return reduce(a, RedOp::Sum, axis, keepdims, dt);
+  return gpu_or_reduce(a, kGSum, axis, keepdims, dt, [&] { return reduce(a, RedOp::Sum, axis, keepdims, dt); });
 }
 ndarray prod(const ndarray& a, std::optional<int64_t> axis, bool keepdims, std::optional<DType> dt) {
-  return reduce(a, RedOp::Prod, axis, keepdims, dt);
+  return gpu_or_reduce(a, kGProd, axis, keepdims, dt, [&] { return reduce(a, RedOp::Prod, axis, keepdims, dt); });
 }
 ndarray amin(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   return reduce(a, RedOp::Min, axis, keepdims, std::nullopt);

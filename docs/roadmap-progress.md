@@ -16,7 +16,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 7 | I/O (.npy/.npz, printing/repr) | add-io | ✅ merged+archived |
 | 8 | sorting/searching/counting, set ops, unique | add-sorting | ✅ merged+archived |
 | 9 | structured/record dtypes, datetime64, strings | add-dtypes-extended | ✅ merged+archived |
-| 10 | GPU kernel coverage beyond GEMM | — | ⬜ |
+| 10 | GPU kernel coverage beyond GEMM | add-gpu-kernels | ✅ merged+archived |
 | 11 | hardening, docs, v1.0 | — | ⬜ |
 
 ## Phase 3 — ufuncs: sub-tracker

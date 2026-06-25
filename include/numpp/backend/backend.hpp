@@ -8,9 +8,13 @@
 namespace numpp {
 
 // Which implementation served an operation. `Auto` lets the dispatcher decide.
-enum class Backend { Auto, Cpu, Blas, Metal, Vulkan, Cuda, OpenCL };
+enum class Backend { Auto, Cpu, Blas, Device, Metal, Vulkan, Cuda, OpenCL };
 
 NUMPP_API const char* backend_name(Backend b);
+
+// Record / query the backend that served the most recent dispatched op (this
+// thread). Used by the ufunc layer's GPU dispatch and by tests.
+NUMPP_API void set_last_backend(Backend b);
 
 // Runtime capability probe (thread-safe, initialized once). Mirrors the
 // weak-linked-backend model: a backend is "available" only if compiled in AND
