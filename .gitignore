@@ -1,0 +1,7 @@
+/build*/
+/inst/
+compile_commands.json
+*.o
+*.so
+*.so.*
+.DS_Store

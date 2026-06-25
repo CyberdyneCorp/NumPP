@@ -1,0 +1,12 @@
+#pragma once
+
+// NumPP umbrella header — a single include for the public API.
+#include "numpp/version.hpp"
+#include "numpp/export.hpp"
+#include "numpp/core/error.hpp"
+#include "numpp/core/half.hpp"
+#include "numpp/core/dtype.hpp"
+#include "numpp/core/shape.hpp"
+#include "numpp/core/ndarray.hpp"
+#include "numpp/core/creation.hpp"
+#include "numpp/backend/backend.hpp"

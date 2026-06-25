@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "numpp",
+  "version": "0.1.0",
+  "description": "Modern C++20 port of NumPy with tiered BLAS/LAPACK/GPU acceleration and a portable CPU fallback for iOS/Android.",
+  "homepage": "https://github.com/leonardoaraujosantos/NumPP",
+  "license": "MIT",
+  "supports": "linux | osx | windows | android | ios",
+  "dependencies": [],
+  "features": {
+    "blas": {
+      "description": "Optional BLAS acceleration backend",
+      "dependencies": [ "openblas" ]
+    },
+    "lapack": {
+      "description": "Optional LAPACK acceleration backend",
+      "dependencies": [ "lapack" ]
+    },
+    "test": {
+      "description": "Build the NumPy-oracle-validated test suite (needs Python 3 + NumPy at test time)"
+    }
+  }
+}

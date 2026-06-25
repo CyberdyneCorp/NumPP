@@ -1,0 +1,10 @@
+#pragma once
+
+#define NUMPP_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define NUMPP_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define NUMPP_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define NUMPP_VERSION_STRING "@PROJECT_VERSION@"
+
+namespace numpp {
+inline constexpr const char* version() { return NUMPP_VERSION_STRING; }
+}  // namespace numpp
