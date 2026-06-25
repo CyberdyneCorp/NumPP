@@ -10,7 +10,7 @@ Durable tracker (survives context resets). Update after every increment.
 |------:|-------|-----------------|:------:|
 | 0–2 | Foundation, ndarray, dtypes | bootstrap-numpp-foundation | ✅ merged+archived |
 | 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
-| 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | 🟡 in progress |
+| 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
 | 5 | fft | — | ⬜ |
 | 6 | random | — | ⬜ |
 | 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
@@ -54,7 +54,7 @@ complete to a high parity bar; genuine long-tail tracked in #3.
 - [x] qr (Householder, reduced/complete), eigh/eigvalsh (Jacobi; complex via 2n embedding), norm (vector + matrix 1/inf/fro)
 - [x] svd (Jacobi on Gram matrix; reduced+full), svdvals, pinv, matrix_rank, lstsq, norm 2/-2/nuc
 - [x] eig/eigvals (general; complex Hessenberg QR + inverse iteration)
-- [ ] LAPACK path behind NUMPP_WITH_LAPACK (weak vtable)
+- [x] LAPACK path behind NUMPP_WITH_LAPACK (weak vtable; solve routed, portable fallback default)
 
 Increment 1: 8 linalg test cases (67 total / 439 checks), 0 divergences,
 clang+gcc+ASan green. Compute in double/complex<double>, output dtype per numpy.

@@ -18,6 +18,15 @@ else()
     target_sources(numpp PRIVATE backend/blas_null.cpp)
 endif()
 
+# LAPACK backend (real vs null) — same weak-vtable model as BLAS.
+if(NUMPP_WITH_LAPACK)
+    target_sources(numpp PRIVATE backend/lapack_backend.cpp)
+    find_package(LAPACK REQUIRED)
+    target_link_libraries(numpp PUBLIC LAPACK::LAPACK)
+else()
+    target_sources(numpp PRIVATE backend/lapack_null.cpp)
+endif()
+
 target_compile_definitions(numpp PRIVATE NUMPP_BUILDING)
 
 target_include_directories(numpp PUBLIC

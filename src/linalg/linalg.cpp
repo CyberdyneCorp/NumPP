@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "numpp/backend/backend.hpp"
+#include "numpp/backend/lapack_vtable.hpp"
 #include "numpp/core/creation.hpp"
 #include "numpp/umath/ufunc.hpp"
 
@@ -366,6 +367,17 @@ namespace linalg {
 ndarray solve(const ndarray& a, const ndarray& b) {
   require_square(a);
   Kind k = la_kind(result_type(a.dtype(), b.dtype()));
+  // Accelerated path: route through LAPACK gesv when a backend is linked and the
+  // dtype matches; otherwise fall through to the portable LU solver.
+  const LapackVTable* vt = lapack_vtable();
+  if (vt && vt->gesv && (k.out == kFloat32 || k.out == kFloat64 || k.out == kComplex64 || k.out == kComplex128)) {
+    const int n = static_cast<int>(a.shape()[0]);
+    const bool bvec = b.ndim() == 1;
+    const int nrhs = bvec ? 1 : static_cast<int>(b.shape()[1]);
+    ndarray A = a.astype(k.out).ascontiguousarray().copy();
+    ndarray B = b.astype(k.out).ascontiguousarray().copy();
+    if (vt->gesv(n, nrhs, k.out.id(), A.bytes(), B.bytes())) return B;
+  }
   if (k.cmplx) return solve_impl<std::complex<double>>(a, b, k);
   return solve_impl<double>(a, b, k);
 }
