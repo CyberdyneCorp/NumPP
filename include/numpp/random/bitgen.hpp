@@ -107,5 +107,49 @@ class PCG64 {
   uint32_t buf32_ = 0;
 };
 
+// MT19937 with legacy init_genrand seeding (bit-exact with the BitGenerator
+// behind numpy.random.RandomState(seed)). The standalone modern
+// numpy.random.MT19937(seed) uses a different SeedSequence-based seeding — see
+// issue for that non-parity.
+class MT19937 {
+ public:
+  explicit MT19937(uint64_t seed) { init_genrand(static_cast<uint32_t>(seed)); }
+
+  uint32_t next32() {
+    if (mti_ >= N) generate();
+    uint32_t y = mt_[mti_++];
+    y ^= y >> 11;
+    y ^= (y << 7) & 0x9d2c5680u;
+    y ^= (y << 15) & 0xefc60000u;
+    y ^= y >> 18;
+    return y;
+  }
+  // numpy legacy 53-bit double from two consecutive 32-bit outputs.
+  double next_double() {
+    uint32_t a = next32() >> 5, b = next32() >> 6;
+    return (a * 67108864.0 + b) / 9007199254740992.0;
+  }
+
+ private:
+  static constexpr int N = 624, M = 397;
+  uint32_t mt_[624]{};
+  int mti_ = N + 1;
+
+  void init_genrand(uint32_t s) {
+    mt_[0] = s;
+    for (int i = 1; i < N; ++i) mt_[i] = 1812433253u * (mt_[i - 1] ^ (mt_[i - 1] >> 30)) + static_cast<uint32_t>(i);
+    mti_ = N;
+  }
+  void generate() {
+    constexpr uint32_t UP = 0x80000000u, LOW = 0x7fffffffu, MATRIX = 0x9908b0dfu;
+    for (int i = 0; i < N; ++i) {
+      uint32_t y = (mt_[i] & UP) | (mt_[(i + 1) % N] & LOW);
+      mt_[i] = mt_[(i + M) % N] ^ (y >> 1);
+      if (y & 1u) mt_[i] ^= MATRIX;
+    }
+    mti_ = 0;
+  }
+};
+
 }  // namespace random
 }  // namespace numpp

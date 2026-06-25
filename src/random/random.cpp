@@ -179,5 +179,52 @@ ndarray Generator::binomial(int64_t n, double p, const Shape& s) {  // bernoulli
   return out;
 }
 
+// --- legacy RandomState (MT19937), bit-exact with numpy.random.RandomState ---
+
+ndarray RandomState::random_sample(const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = mt_.next_double();
+  return out;
+}
+
+ndarray RandomState::randint(int64_t low, int64_t high, const Shape& s) {
+  const uint64_t rng = static_cast<uint64_t>(high - low - 1);  // inclusive max
+  uint64_t mask = rng;
+  mask |= mask >> 1; mask |= mask >> 2; mask |= mask >> 4; mask |= mask >> 8; mask |= mask >> 16; mask |= mask >> 32;
+  ndarray out(s, kInt64, Order::C); int64_t* p = out.typed_data<int64_t>();
+  for (int64_t i = 0; i < out.size(); ++i) {
+    uint64_t v;
+    if (rng <= 0xffffffffull) { do { v = mt_.next32() & mask; } while (v > rng); }
+    else { do { uint64_t hi = mt_.next32(), lo = mt_.next32(); v = ((hi << 32) | lo) & mask; } while (v > rng); }
+    p[i] = low + static_cast<int64_t>(v);
+  }
+  return out;
+}
+
+double RandomState::next_gauss() {  // numpy legacy rk_gauss (Marsaglia polar)
+  if (has_gauss_) { has_gauss_ = false; return gauss_; }
+  double x1, x2, r2;
+  do { x1 = 2.0 * mt_.next_double() - 1.0; x2 = 2.0 * mt_.next_double() - 1.0; r2 = x1 * x1 + x2 * x2; } while (r2 >= 1.0 || r2 == 0.0);
+  double f = std::sqrt(-2.0 * std::log(r2) / r2);
+  gauss_ = f * x1; has_gauss_ = true;
+  return f * x2;
+}
+ndarray RandomState::randn(const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = next_gauss();
+  return out;
+}
+ndarray RandomState::normal(double loc, double scale, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = loc + scale * next_gauss();
+  return out;
+}
+ndarray RandomState::uniform(double low, double high, const Shape& s) {
+  ndarray out(s, kFloat64, Order::C); double* p = out.typed_data<double>();
+  const double range = high - low;
+  for (int64_t i = 0; i < out.size(); ++i) p[i] = low + range * mt_.next_double();
+  return out;
+}
+
 }  // namespace random
 }  // namespace numpp

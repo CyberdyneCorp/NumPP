@@ -63,5 +63,33 @@ class NUMPP_API Generator {
 // numpy.random.default_rng(seed) equivalent.
 inline Generator default_rng(uint64_t seed) { return Generator(seed); }
 
+// Legacy numpy.random.RandomState(seed) (MT19937 + legacy algorithms), bit-exact.
+class NUMPP_API RandomState {
+ public:
+  explicit RandomState(uint64_t seed) : mt_(seed) {}
+
+  double next_double() { return mt_.next_double(); }
+  double next_gauss();
+
+  ndarray random_sample(const Shape& shape);
+  ndarray random_sample(int64_t n) { return random_sample(Shape{n}); }
+  ndarray rand(const Shape& shape) { return random_sample(shape); }
+  ndarray rand(int64_t n) { return random_sample(Shape{n}); }
+  ndarray randint(int64_t low, int64_t high, const Shape& shape);
+  ndarray randint(int64_t low, int64_t high, int64_t n) { return randint(low, high, Shape{n}); }
+  ndarray randn(const Shape& shape);
+  ndarray randn(int64_t n) { return randn(Shape{n}); }
+  ndarray standard_normal(const Shape& shape) { return randn(shape); }
+  ndarray normal(double loc, double scale, const Shape& shape);
+  ndarray normal(double loc, double scale, int64_t n) { return normal(loc, scale, Shape{n}); }
+  ndarray uniform(double low, double high, const Shape& shape);
+  ndarray uniform(double low, double high, int64_t n) { return uniform(low, high, Shape{n}); }
+
+ private:
+  MT19937 mt_;
+  bool has_gauss_ = false;
+  double gauss_ = 0.0;
+};
+
 }  // namespace random
 }  // namespace numpp

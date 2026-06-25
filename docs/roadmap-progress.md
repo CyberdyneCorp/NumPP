@@ -12,7 +12,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
 | 5 | fft | add-fft | ✅ merged+archived |
-| 6 | random | add-random | 🟡 in progress |
+| 6 | random | add-random | ✅ merged+archived |
 | 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
 | 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
 | 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
@@ -74,7 +74,7 @@ Increment 1: 7 fft cases (95 total / 506 checks), 0 divergences, clang+gcc+ASan 
 - [x] SeedSequence (exact) + PCG64 (XSL-RR); bit-exact raw stream + random doubles
 - [x] Generator: integers (32-bit Lemire), uniform, shuffle/permutation (bit-exact); choice (replace=True bit-exact)
 - [x] Distributions: standard_normal/exponential/normal/exponential/gamma/beta/chisquare/poisson/binomial (correct samplers; statistical parity, issue #8)
-- [ ] MT19937 + legacy RandomState
+- [x] MT19937 (legacy seeding) + RandomState (random_sample/randint/randn/normal/uniform) bit-exact; standalone MT19937 raw -> issue #9
 
 Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
 0 divergences, clang+gcc+ASan green.
