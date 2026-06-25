@@ -113,3 +113,11 @@ Increment (a): 5 cases (166 total / 910 checks), 0 divergences, clang+gcc+ASan g
 | #8 | distributions not bit-exact (no ziggurat tables) | 6 | test_random3 moments | open |
 | #7 | choice(replace=False) not bit-exact w/ numpy | 6 | test_random2 valid-sample | open |
 | #3 | Phase 3 parity tracking (out=/where=, nan-reductions, argmin/cumsum) | 3 | — | open |
+
+## Examples (post-1.0)
+
+`examples/` — 7 Electrical-Engineering math programs (RLC AC analysis, nodal
+analysis, Fourier spectrum, FIR convolution, state-space stability, least-squares
+fit, three-phase power) + 1 neural network (2->4->1 MLP learning XOR with full
+back-prop). Each self-verifies against live NumPy via `examples/parity.hpp`;
+**all 64 parity assertions pass**. Build with -DNUMPP_BUILD_EXAMPLES=ON.
