@@ -22,7 +22,6 @@ static ndarray rect() {  // 4x3 general
   for (int i = 0; i < 12; ++i) m.set_item<double>({i / 3, i % 3}, v[i]);
   return m;
 }
-static const char* Rpy = "R=np.array([[1.,2,3],[4,5,6],[7,8,10],[1,0,2]])";
 
 TEST_CASE("qr reduced: reconstruction and orthonormality") {
   auto qr = linalg::qr(rect());
