@@ -3,6 +3,7 @@ add_library(numpp
     core/shape.cpp
     core/ndarray.cpp
     core/creation.cpp
+    manip/manip.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
     fft/fft.cpp
