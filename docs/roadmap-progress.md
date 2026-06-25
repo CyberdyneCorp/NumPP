@@ -18,7 +18,6 @@ Durable tracker (survives context resets). Update after every increment.
 | 9 | structured/record dtypes, datetime64, strings | add-dtypes-extended | ✅ merged+archived |
 | 10 | GPU kernel coverage beyond GEMM | add-gpu-kernels | ✅ merged+archived |
 | 11 | hardening, docs, v1.0 | add-hardening | ✅ merged+archived |
-| 11 | hardening, docs, v1.0 | — | ⬜ |
 
 ## Phase 3 — ufuncs: sub-tracker
 
