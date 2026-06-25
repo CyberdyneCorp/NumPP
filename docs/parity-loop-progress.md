@@ -8,8 +8,8 @@ PR/merge/archive. Durable tracker (survives context resets).
 | # | Capability | Tier | Status |
 |--:|-----------|:----:|:------:|
 | 1 | array-manipulation (concatenate/stack/split/tile/repeat/flip/roll/pad/...) | 1 | ✅ merged+archived |
-| 2 | statistics (cumsum/diff/gradient/median/percentile/cov/corrcoef/digitize + nan*) | 1 | 🟡 next |
-| 3 | creation-grids (array/meshgrid/diag/tri*/vander/logspace/geomspace) | 1 | ⬜ |
+| 2 | statistics (cumsum/diff/gradient/median/percentile/cov/corrcoef/digitize + nan*) | 1 | ✅ merged+archived |
+| 3 | creation-grids (array/meshgrid/diag/tri*/vander/logspace/geomspace) | 1 | 🟡 next |
 | 4 | advanced-indexing (take/put/diagonal/argwhere/select/fancy+boolean) | 1 | ⬜ |
 | 5 | ufuncs-extras (round/gcd/lcm/sinc/nan_to_num/logaddexp/float_power/modf/...) | 1 | ⬜ |
 | 6 | signal-poly (convolve/correlate/interp; polyval/polyfit/roots/poly1d) | 1 | ⬜ |
