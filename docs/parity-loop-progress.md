@@ -11,8 +11,8 @@ PR/merge/archive. Durable tracker (survives context resets).
 | 2 | statistics (cumsum/diff/gradient/median/percentile/cov/corrcoef/digitize + nan*) | 1 | ✅ merged+archived |
 | 3 | creation-grids (meshgrid/indices/diag/diagflat/tri*/vander/logspace/geomspace/fromfunction) | 1 | ✅ merged+archived |
 | 4 | advanced-indexing (take/take_along_axis/put/diagonal/argwhere/compress/choose/select/ravel_multi_index) | 1 | ✅ merged+archived |
-| 5 | ufuncs-extras (round/gcd/lcm/sinc/nan_to_num/logaddexp/float_power/modf/...) | 1 | 🟡 next |
-| 6 | signal-poly (convolve/correlate/interp; polyval/polyfit/roots/poly1d) | 1 | ⬜ |
+| 5 | ufuncs-extras (around/gcd/lcm/sinc/nan_to_num/logaddexp/float_power/modf/frexp/unwrap/i0/...) | 1 | ✅ merged+archived |
+| 6 | signal-poly (convolve/correlate/interp; polyval/polyfit/roots/poly1d) | 1 | 🟡 next |
 | 7 | sorting-extras (lexsort/sort_complex) | 1 | ⬜ |
 | 8 | einsum (+tensordot/cross/cond/multi_dot) | 2 | ⬜ |
 | 9 | random-distributions (full set + Philox/SFC64) | 2 | ⬜ |
@@ -23,4 +23,4 @@ PR/merge/archive. Durable tracker (survives context resets).
 ## Bug log (oracle divergences → issues)
 | # | issue | capability | regression test | status |
 |---|-------|-----------|-----------------|--------|
-| – | (none yet) | | | |
+| 1 | [#26](https://github.com/CyberdyneCorp/NumPP/issues/26) spacing() sign wrong for negative inputs | ufuncs-extras | test_mathx.cpp `spacing vs numpy` | ✅ fixed (pre-merge) |

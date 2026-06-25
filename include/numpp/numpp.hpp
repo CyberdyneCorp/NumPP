@@ -13,6 +13,7 @@
 #include "numpp/stats/stats.hpp"
 #include "numpp/grids/grids.hpp"
 #include "numpp/indexing/indexing.hpp"
+#include "numpp/mathx/mathx.hpp"
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/linalg/linalg.hpp"
 #include "numpp/fft/fft.hpp"
