@@ -11,6 +11,7 @@
 #include "numpp/core/creation.hpp"
 #include "numpp/manip/manip.hpp"
 #include "numpp/stats/stats.hpp"
+#include "numpp/grids/grids.hpp"
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/linalg/linalg.hpp"
 #include "numpp/fft/fft.hpp"

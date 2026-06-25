@@ -5,6 +5,7 @@ add_library(numpp
     core/creation.cpp
     manip/manip.cpp
     stats/stats.cpp
+    grids/grids.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
     fft/fft.cpp
