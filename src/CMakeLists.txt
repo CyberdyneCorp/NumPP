@@ -6,6 +6,7 @@ add_library(numpp
     manip/manip.cpp
     stats/stats.cpp
     grids/grids.cpp
+    indexing/indexing.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
     fft/fft.cpp
