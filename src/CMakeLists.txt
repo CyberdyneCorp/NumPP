@@ -17,6 +17,7 @@ add_library(numpp
     io/npz.cpp
     io/format.cpp
     sorting/sorting.cpp
+    sorting/sorting_extra.cpp
     strings/strings.cpp
     datetime/datetime.cpp
     struct/struct.cpp
