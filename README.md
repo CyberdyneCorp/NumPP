@@ -82,6 +82,34 @@ Default build has **zero required dependencies**. Optional backends:
 
 Packaging via `vcpkg.json` and `conanfile.py`; `find_package(NumPP)` exports the target.
 
+## Examples
+
+`examples/` contains worked programs covering a typical Electrical-Engineering
+math course plus a neural network — **each one self-verifies against live NumPy**
+at runtime (computes the result in NumPP, recomputes it in NumPy, asserts
+`allclose`, prints `PASS`/`FAIL`). All **64 parity assertions across the 8
+examples pass** against NumPy 2.1.3.
+
+| Example | EE / ML topic | NumPP features |
+|---------|---------------|----------------|
+| `ee01_rlc_impedance` | Series RLC AC analysis — complex impedance, phase, resonance | complex ufuncs, `arctan2`, `absolute` |
+| `ee02_nodal_analysis` | Resistive circuit nodal analysis — `G·v = I` | `linalg::solve`, `det`, `dot` |
+| `ee03_fourier_spectrum` | Fourier analysis of a sampled signal, peak detection | `fft::fft`, `fftfreq` |
+| `ee04_convolution_filter` | FIR filtering via the convolution theorem | `fft`/`ifft`, `real` |
+| `ee05_state_space_stability` | State-space eigen-stability | `linalg::eigvals`, `trace`, `det` |
+| `ee06_least_squares_fit` | Least-squares polynomial regression | `linalg::lstsq`, Vandermonde |
+| `ee07_three_phase_power` | Three-phase AC power — phasors, P/Q, power factor | complex arithmetic, `conj` |
+| `nn01_mlp_xor` | **Neural net** — a 2→4→1 MLP learning XOR with full back-prop | `matmul`, `exp`, broadcasting |
+
+The neural net is implemented end-to-end in NumPP (sigmoid via `1/(1+exp(-x))`,
+full-batch gradient descent) and its trained predictions match an identical NumPy
+training loop bit-for-bit, converging to XOR (`[0.04, 0.96, 0.96, 0.03]`).
+
+```bash
+cmake -S . -B build -DNUMPP_BUILD_EXAMPLES=ON && cmake --build build
+./build/examples/numpp_nn01_mlp_xor        # or any numpp_ee0*
+```
+
 ## Known limitations (tracked as GitHub issues)
 
 These are *correct-but-not-bit/format-exact* or deferred — not correctness bugs:
