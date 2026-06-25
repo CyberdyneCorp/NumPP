@@ -2,8 +2,10 @@
 
 #include <complex>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "numpp/core/error.hpp"
 #include "numpp/core/half.hpp"
@@ -17,37 +19,56 @@ enum class DTypeId : uint8_t {
   UInt8, UInt16, UInt32, UInt64,
   Float16, Float32, Float64,
   Complex64, Complex128,
+  // Extended dtypes (carry a metadata side-channel; not in the numeric tables).
+  String, Bytes, Datetime64, Timedelta64, Struct,
 };
 
-inline constexpr int kNumDTypes = 14;
+inline constexpr int kNumDTypes = 14;  // count of numeric dtypes (table dimension)
 
-// A dtype is a lightweight value: id + item size + kind + name. Byte order is
-// always native in this foundation (non-native order is a documented non-goal).
+struct DTypeMeta;  // defined below (needs complete DType)
+
+// A dtype value: a numeric id, or an extended id plus shared metadata. Numeric
+// dtypes keep a null metadata pointer, so they stay cheap to copy/compare.
 class NUMPP_API DType {
  public:
-  constexpr DType() = default;
-  constexpr explicit DType(DTypeId id) : id_(id) {}
+  DType() = default;
+  explicit DType(DTypeId id) : id_(id) {}
+  DType(DTypeId id, std::shared_ptr<const DTypeMeta> meta) : id_(id), meta_(std::move(meta)) {}
 
-  // Construct from a NumPy name or alias ("float64", "f8", "int", "bool", ...).
-  // Throws type_error on an unrecognized name.
   static DType from_name(std::string_view name);
 
-  constexpr DTypeId id() const { return id_; }
-  uint8_t itemsize() const;
-  char kind() const;          // 'b','i','u','f','c'
+  DTypeId id() const { return id_; }
+  int64_t itemsize() const;
+  char kind() const;          // 'b','i','u','f','c','U','S','M','m','V'
   const char* name() const;   // "int32", "float64", ...
-  constexpr char byteorder() const { return '='; }  // native only
+  char byteorder() const { return '='; }  // native only
+  const std::shared_ptr<const DTypeMeta>& meta() const { return meta_; }
 
   bool is_complex() const { return id_ == DTypeId::Complex64 || id_ == DTypeId::Complex128; }
   bool is_floating() const;
   bool is_integer() const;
+  bool is_numeric() const { return static_cast<int>(id_) < kNumDTypes; }
+  bool is_extended() const { return static_cast<int>(id_) >= kNumDTypes; }
 
-  friend constexpr bool operator==(DType a, DType b) { return a.id_ == b.id_; }
-  friend constexpr bool operator!=(DType a, DType b) { return a.id_ != b.id_; }
+  NUMPP_API friend bool operator==(const DType& a, const DType& b);
+  friend bool operator!=(const DType& a, const DType& b) { return !(a == b); }
 
  private:
   DTypeId id_ = DTypeId::Float64;
+  std::shared_ptr<const DTypeMeta> meta_;
 };
+
+struct StructField { std::string name; DType dtype; int64_t offset; };
+// Side-channel metadata for extended dtypes; null for the 14 numeric dtypes.
+struct DTypeMeta {
+  int64_t itemsize = 0;          // string/bytes/datetime/struct byte size
+  char unit = '\0';              // datetime64/timedelta64 unit (Y/M/D/h/m/s/...)
+  std::vector<StructField> fields;  // structured dtype layout
+};
+
+// Extended-dtype factories.
+NUMPP_API DType make_string(int64_t num_chars);  // 'U' (UTF-32, 4 bytes/char)
+NUMPP_API DType make_bytes(int64_t num_bytes);   // 'S'
 
 // Convenience dtype constants.
 inline const DType kBool{DTypeId::Bool};
@@ -114,6 +135,9 @@ decltype(auto) visit_dtype(DTypeId id, F&& f) {
     case DTypeId::Float64:    return f(dtype_traits<DTypeId::Float64>{});
     case DTypeId::Complex64:  return f(dtype_traits<DTypeId::Complex64>{});
     case DTypeId::Complex128: return f(dtype_traits<DTypeId::Complex128>{});
+    case DTypeId::String: case DTypeId::Bytes: case DTypeId::Datetime64:
+    case DTypeId::Timedelta64: case DTypeId::Struct:
+      throw type_error("visit_dtype: not a numeric dtype");
   }
   throw type_error("invalid dtype id");
 }

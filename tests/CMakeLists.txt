@@ -25,6 +25,7 @@ add_executable(numpp_tests
     test_sorting.cpp
     test_sorting2.cpp
     test_sorting3.cpp
+    test_strings.cpp
 )
 target_link_libraries(numpp_tests PRIVATE numpp::numpp)
 target_include_directories(numpp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

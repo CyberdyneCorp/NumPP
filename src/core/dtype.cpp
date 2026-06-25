@@ -73,11 +73,50 @@ int ix(DType d) { return static_cast<int>(d.id()); }
 
 }  // namespace
 
-uint8_t DType::itemsize() const { return kMeta[static_cast<int>(id_)].size; }
-char DType::kind() const { return kMeta[static_cast<int>(id_)].kind; }
-const char* DType::name() const { return kMeta[static_cast<int>(id_)].name; }
-bool DType::is_floating() const { return kind() == 'f'; }
-bool DType::is_integer() const { return kind() == 'i' || kind() == 'u'; }
+int64_t DType::itemsize() const {
+  if (meta_) return meta_->itemsize;
+  return kMeta[static_cast<int>(id_)].size;
+}
+char DType::kind() const {
+  switch (id_) {
+    case DTypeId::String: return 'U';
+    case DTypeId::Bytes: return 'S';
+    case DTypeId::Datetime64: return 'M';
+    case DTypeId::Timedelta64: return 'm';
+    case DTypeId::Struct: return 'V';
+    default: return kMeta[static_cast<int>(id_)].kind;
+  }
+}
+const char* DType::name() const {
+  switch (id_) {
+    case DTypeId::String: return "str";
+    case DTypeId::Bytes: return "bytes";
+    case DTypeId::Datetime64: return "datetime64";
+    case DTypeId::Timedelta64: return "timedelta64";
+    case DTypeId::Struct: return "void";
+    default: return kMeta[static_cast<int>(id_)].name;
+  }
+}
+bool DType::is_floating() const { return is_numeric() && kind() == 'f'; }
+bool DType::is_integer() const { return is_numeric() && (kind() == 'i' || kind() == 'u'); }
+
+bool operator==(const DType& a, const DType& b) {
+  if (a.id_ != b.id_) return false;
+  if (!a.meta_ && !b.meta_) return true;
+  if (!a.meta_ || !b.meta_) return false;
+  return a.meta_->itemsize == b.meta_->itemsize && a.meta_->unit == b.meta_->unit;
+}
+
+DType make_string(int64_t num_chars) {
+  auto m = std::make_shared<DTypeMeta>();
+  m->itemsize = 4 * num_chars;  // UTF-32
+  return DType(DTypeId::String, m);
+}
+DType make_bytes(int64_t num_bytes) {
+  auto m = std::make_shared<DTypeMeta>();
+  m->itemsize = num_bytes;
+  return DType(DTypeId::Bytes, m);
+}
 
 DType default_int() {
   return sizeof(void*) >= 8 ? kInt64 : kInt32;
@@ -109,10 +148,15 @@ DType DType::from_name(std::string_view s) {
 }
 
 DType result_type(DType a, DType b) {
+  if (a.is_extended() || b.is_extended()) {
+    if (a == b) return a;
+    throw type_error("no common dtype for extended dtypes");
+  }
   return DType(static_cast<DTypeId>(kPromote[ix(a)][ix(b)]));
 }
 
 bool can_cast(DType from, DType to, Casting casting) {
+  if (from.is_extended() || to.is_extended()) return from == to;  // no numeric<->extended casts yet
   switch (casting) {
     case Casting::No:
     case Casting::Equiv:   return from == to;

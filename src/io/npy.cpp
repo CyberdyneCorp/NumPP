@@ -29,12 +29,17 @@ std::string shape_tuple(const Shape& s) {
 }  // namespace
 
 std::string dtype_to_descr(DType d) {
+  if (d.kind() == 'U') return "<U" + std::to_string(d.itemsize() / 4);
+  if (d.kind() == 'S') return "|S" + std::to_string(d.itemsize());
   for (const auto& e : kDescrs) if (e.dt == d) return e.descr;
   throw type_error("npy: unsupported dtype");
 }
 DType descr_to_dtype(const std::string& descr) {
-  // Match on the kind+size suffix, ignoring the byte-order char (native only).
-  std::string suffix = descr.empty() ? descr : descr.substr(1);
+  std::string suffix = descr.empty() ? descr : descr.substr(1);  // drop byte-order char
+  if (!suffix.empty() && (suffix[0] == 'U' || suffix[0] == 'S')) {
+    int64_t n = std::stoll(suffix.substr(1));
+    return suffix[0] == 'U' ? make_string(n) : make_bytes(n);
+  }
   for (const auto& e : kDescrs) if (std::string(e.descr).substr(1) == suffix) return e.dt;
   throw type_error("npy: unsupported descr '" + descr + "'");
 }

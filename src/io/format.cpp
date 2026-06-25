@@ -1,5 +1,8 @@
 #include "numpp/io/format.hpp"
 
+#include "numpp/io/npy.hpp"
+#include "numpp/strings/strings.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -31,10 +34,14 @@ bool is_default_dtype(DType d) { return d == kInt64 || d == kFloat64 || d == kCo
 
 // Produce padded element strings (C order) for the whole array.
 std::vector<std::string> element_strings(const ndarray& a) {
-  ndarray c = a.astype(a.dtype()).ascontiguousarray();
+  ndarray c = a.ascontiguousarray();
   const int64_t n = c.size();
   std::vector<std::string> out(n);
   const char k = c.dtype().kind();
+  if (k == 'U' || k == 'S') {
+    for (int64_t i = 0; i < n; ++i) out[i] = "'" + get_string(c, i) + "'";
+    return out;
+  }
   if (k == 'i' || k == 'u' || c.dtype() == kBool) {
     size_t w = 0;
     visit_dtype(c.dtype().id(), [&](auto tag) {
@@ -143,10 +150,11 @@ std::string array_repr(const ndarray& a) {
   std::string body;
   if (a.size() == 0) body = "[]";
   else body = a.ndim() == 0 ? format_body(a, ", ", 6) : format_body(a, ", ", 6);
-  std::string out = "array(" + body + ")";
+  if (a.dtype().is_extended())
+    return "array(" + body + ", dtype='" + dtype_to_descr(a.dtype()) + "')";
   if (!is_default_dtype(a.dtype()))
-    out = "array(" + body + ", dtype=" + a.dtype().name() + ")";
-  return out;
+    return "array(" + body + ", dtype=" + a.dtype().name() + ")";
+  return "array(" + body + ")";
 }
 
 }  // namespace numpp

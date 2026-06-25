@@ -11,6 +11,7 @@ add_library(numpp
     io/npz.cpp
     io/format.cpp
     sorting/sorting.cpp
+    strings/strings.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
