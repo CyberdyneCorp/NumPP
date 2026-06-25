@@ -12,7 +12,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
 | 5 | fft | add-fft | ✅ merged+archived |
-| 6 | random | — | ⬜ |
+| 6 | random | add-random | 🟡 in progress |
 | 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
 | 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
 | 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
@@ -68,6 +68,16 @@ clang+gcc+ASan green. Compute in double/complex<double>, output dtype per numpy.
 - [x] fft2/ifft2/rfft2/irfft2, fftn/ifftn/rfftn/irfftn
 
 Increment 1: 7 fft cases (95 total / 506 checks), 0 divergences, clang+gcc+ASan green.
+
+## Phase 6 — random: sub-tracker (branch phase-6-random)
+
+- [x] SeedSequence (exact) + PCG64 (XSL-RR); bit-exact raw stream + random doubles
+- [ ] Generator: integers (Lemire), uniform, shuffle/permutation/choice
+- [ ] Distributions: standard_normal/normal/exponential/poisson/binomial/gamma/beta/chisquare
+- [ ] MT19937 + legacy RandomState
+
+Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
+0 divergences, clang+gcc+ASan green.
 
 ## Bug log (oracle divergences → GitHub issues)
 

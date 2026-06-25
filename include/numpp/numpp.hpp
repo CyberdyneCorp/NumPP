@@ -12,4 +12,5 @@
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/linalg/linalg.hpp"
 #include "numpp/fft/fft.hpp"
+#include "numpp/random/random.hpp"
 #include "numpp/backend/backend.hpp"

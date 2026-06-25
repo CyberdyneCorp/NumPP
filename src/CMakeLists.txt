@@ -6,6 +6,7 @@ add_library(numpp
     umath/ufunc.cpp
     linalg/linalg.cpp
     fft/fft.cpp
+    random/random.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
