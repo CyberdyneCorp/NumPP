@@ -9,7 +9,7 @@ Durable tracker (survives context resets). Update after every increment.
 | Phase | Title | OpenSpec change | Status |
 |------:|-------|-----------------|:------:|
 | 0–2 | Foundation, ndarray, dtypes | bootstrap-numpp-foundation | ✅ merged+archived |
-| 3 | ufuncs & element-wise math | add-ufuncs-elementwise | 🟡 in progress |
+| 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | — | ⬜ |
 | 5 | fft | — | ⬜ |
 | 6 | random | — | ⬜ |
@@ -36,12 +36,15 @@ ndarray/dtype/broadcast machinery, with per-ufunc type-resolution policy.
 - [x] Reductions: sum, prod, min, max, mean, std, var (ddof), any, all (axis, keepdims, dtype)  · [ ] axis-tuple
 - [x] where, nonzero
 - [x] Operators: + - * /, unary -, comparison operators, weak-promoted scalar operands
-- [ ] kwargs parity: out=, where= (tracked in #3)
+- [x] complex components: conj/conjugate/real/imag/angle
+- [x] out=/where= via copyto + arithmetic overloads; integer**negative raises (parity)
+- [ ] long-tail (issue #3): out= on ALL ufuncs, nan-reductions, argmin/argmax, cumsum/cumprod, axis-tuple
 
-Increment 1: core families, 0 divergences. Increment 2: trig/math extras,
-predicates, binary-float, shifts, fmin/fmax, clip, var/std, where, nonzero,
-scalar operands — 56 cases / 404 checks, clang+gcc+ASan green. Phase 3 ~90%;
-only out=/where= kwargs + axis-tuple remain (issue #3) before PR/merge.
+Increment 1: core families. Increment 2: trig/math extras, predicates,
+binary-float, shifts, fmin/fmax, clip, var/std, where, nonzero, scalars.
+Increment 3: conj/real/imag/angle, copyto + out=/where=, integer-power error.
+**60 cases / 418 checks, clang+gcc+ASan green, 0 oracle divergences.** Phase 3
+complete to a high parity bar; genuine long-tail tracked in #3.
 
 ## Bug log (oracle divergences → GitHub issues)
 

@@ -1,5 +1,7 @@
 #include "numpp/umath/ufunc.hpp"
 
+#include "numpp/core/creation.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -97,7 +99,11 @@ T bin_scalar(BinOp op, T x, T y) {
       case BinOp::Div: return static_cast<T>(x / y);
       case BinOp::FloorDiv: return int_floordiv<T>(x, y);
       case BinOp::Mod: return static_cast<T>(x - int_floordiv<T>(x, y) * y);
-      case BinOp::Power: return static_cast<T>(std::pow(static_cast<double>(x), static_cast<double>(y)));
+      case BinOp::Power:
+        if constexpr (std::is_signed_v<T>) {
+          if (y < 0) throw value_error("Integers to negative integer powers are not allowed.");
+        }
+        return static_cast<T>(std::pow(static_cast<double>(x), static_cast<double>(y)));
       case BinOp::Min: case BinOp::Fmin: return std::min(x, y);
       case BinOp::Max: case BinOp::Fmax: return std::max(x, y);
       case BinOp::And: return static_cast<T>(x & y);
@@ -598,6 +604,91 @@ ndarray signbit(const ndarray& a) { return unary_pred(a, Pred::Signbit); }
 
 ndarray clip(const ndarray& a, const ndarray& lo, const ndarray& hi) {
   return minimum(maximum(a, lo), hi);
+}
+
+ndarray conj(const ndarray& a) {
+  if (!a.dtype().is_complex()) return a.copy();
+  ndarray res(a.shape(), a.dtype(), Order::C);
+  if (a.dtype() == kComplex64)
+    zip1<std::complex<float>, std::complex<float>>(a, res, [](std::complex<float> x) { return std::conj(x); });
+  else
+    zip1<std::complex<double>, std::complex<double>>(a, res, [](std::complex<double> x) { return std::conj(x); });
+  return res;
+}
+ndarray conjugate(const ndarray& a) { return conj(a); }
+
+ndarray real(const ndarray& a) {
+  if (!a.dtype().is_complex()) return a.copy();
+  DType out_dt = a.dtype() == kComplex64 ? kFloat32 : kFloat64;
+  ndarray res(a.shape(), out_dt, Order::C);
+  if (a.dtype() == kComplex64)
+    zip1<std::complex<float>, float>(a, res, [](std::complex<float> x) { return x.real(); });
+  else
+    zip1<std::complex<double>, double>(a, res, [](std::complex<double> x) { return x.real(); });
+  return res;
+}
+ndarray imag(const ndarray& a) {
+  if (!a.dtype().is_complex()) return zeros_like(a);
+  DType out_dt = a.dtype() == kComplex64 ? kFloat32 : kFloat64;
+  ndarray res(a.shape(), out_dt, Order::C);
+  if (a.dtype() == kComplex64)
+    zip1<std::complex<float>, float>(a, res, [](std::complex<float> x) { return x.imag(); });
+  else
+    zip1<std::complex<double>, double>(a, res, [](std::complex<double> x) { return x.imag(); });
+  return res;
+}
+ndarray angle(const ndarray& a) {
+  if (a.dtype().is_complex()) {
+    DType out_dt = a.dtype() == kComplex64 ? kFloat32 : kFloat64;
+    ndarray res(a.shape(), out_dt, Order::C);
+    if (a.dtype() == kComplex64)
+      zip1<std::complex<float>, float>(a, res, [](std::complex<float> x) { return std::arg(x); });
+    else
+      zip1<std::complex<double>, double>(a, res, [](std::complex<double> x) { return std::arg(x); });
+    return res;
+  }
+  return arctan2(zeros_like(a), a);  // angle of real x = atan2(0, x): 0 if x>=0 else pi
+}
+
+void copyto(ndarray& dst, const ndarray& src, const ndarray* where) {
+  if (!dst.writeable()) throw value_error("copyto destination is read-only");
+  ndarray s = src.astype(dst.dtype()).broadcast_to(dst.shape());
+  const bool hasMask = where != nullptr;
+  ndarray mask;
+  if (hasMask) mask = where->astype(kBool).broadcast_to(dst.shape());
+  const int64_t nd = dst.ndim(), total = dst.size();
+  if (total == 0) return;
+  visit_dtype(dst.dtype().id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    std::vector<int64_t> idx(nd, 0);
+    while (true) {
+      int64_t doff = dst.offset(), soff = s.offset(), moff = hasMask ? mask.offset() : 0;
+      for (int64_t i = 0; i < nd; ++i) {
+        doff += idx[i] * dst.strides()[i];
+        soff += idx[i] * s.strides()[i];
+        if (hasMask) moff += idx[i] * mask.strides()[i];
+      }
+      bool take = true;
+      if (hasMask) { std::memcpy(&take, mask.buffer()->data() + moff, 1); }
+      if (take) std::memcpy(dst.buffer()->data() + doff, s.buffer()->data() + soff, sizeof(T));
+      int64_t ax = nd - 1;
+      for (; ax >= 0; --ax) { if (++idx[ax] < dst.shape()[ax]) break; idx[ax] = 0; }
+      if (ax < 0) break;
+    }
+  });
+}
+
+ndarray add(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where) {
+  copyto(out, add(a, b), where); return out;
+}
+ndarray subtract(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where) {
+  copyto(out, subtract(a, b), where); return out;
+}
+ndarray multiply(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where) {
+  copyto(out, multiply(a, b), where); return out;
+}
+ndarray divide(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where) {
+  copyto(out, divide(a, b), where); return out;
 }
 
 ndarray scalar_like(double value, DType like, bool is_float) {

@@ -86,6 +86,24 @@ NUMPP_API ndarray isinf(const ndarray& a);
 NUMPP_API ndarray isfinite(const ndarray& a);
 NUMPP_API ndarray signbit(const ndarray& a);
 
+// ---- complex component ufuncs ----
+NUMPP_API ndarray conj(const ndarray& a);          // conjugate
+NUMPP_API ndarray conjugate(const ndarray& a);
+NUMPP_API ndarray real(const ndarray& a);          // real part (real dtype)
+NUMPP_API ndarray imag(const ndarray& a);          // imaginary part (real dtype)
+NUMPP_API ndarray angle(const ndarray& a);         // phase angle (float)
+
+// ---- out= / where= support ----
+// np.copyto(dst, src, where=): cast src to dst.dtype, broadcast to dst.shape, and
+// assign into dst (everywhere, or only where the mask is true). Mutates dst.
+NUMPP_API void copyto(ndarray& dst, const ndarray& src, const ndarray* where = nullptr);
+
+// out=/where= overloads of the core arithmetic ufuncs (write into and return out).
+NUMPP_API ndarray add(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where = nullptr);
+NUMPP_API ndarray subtract(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where = nullptr);
+NUMPP_API ndarray multiply(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where = nullptr);
+NUMPP_API ndarray divide(const ndarray& a, const ndarray& b, ndarray out, const ndarray* where = nullptr);
+
 // ---- selection ----
 NUMPP_API ndarray clip(const ndarray& a, const ndarray& lo, const ndarray& hi);
 NUMPP_API ndarray where(const ndarray& cond, const ndarray& a, const ndarray& b);
