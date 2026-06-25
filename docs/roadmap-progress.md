@@ -10,7 +10,7 @@ Durable tracker (survives context resets). Update after every increment.
 |------:|-------|-----------------|:------:|
 | 0–2 | Foundation, ndarray, dtypes | bootstrap-numpp-foundation | ✅ merged+archived |
 | 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
-| 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | — | ⬜ |
+| 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | 🟡 in progress |
 | 5 | fft | — | ⬜ |
 | 6 | random | — | ⬜ |
 | 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
@@ -45,6 +45,18 @@ binary-float, shifts, fmin/fmax, clip, var/std, where, nonzero, scalars.
 Increment 3: conj/real/imag/angle, copyto + out=/where=, integer-power error.
 **60 cases / 418 checks, clang+gcc+ASan green, 0 oracle divergences.** Phase 3
 complete to a high parity bar; genuine long-tail tracked in #3.
+
+## Phase 4 — linalg: sub-tracker (branch phase-4-linalg)
+
+- [x] Products: dot, vdot, inner, outer, trace, kron
+- [x] LU core: solve, inv, det, slogdet, matrix_power (real + complex)
+- [x] cholesky (+ not-PD -> linalg_error)
+- [ ] qr (Householder), svd (Jacobi), eigh/eigvalsh (symmetric Jacobi)
+- [ ] eig/eigvals (general), lstsq, pinv, matrix_rank, norm
+- [ ] LAPACK path behind NUMPP_WITH_LAPACK (weak vtable)
+
+Increment 1: 8 linalg test cases (67 total / 439 checks), 0 divergences,
+clang+gcc+ASan green. Compute in double/complex<double>, output dtype per numpy.
 
 ## Bug log (oracle divergences → GitHub issues)
 
