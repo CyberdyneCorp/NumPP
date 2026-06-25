@@ -77,6 +77,15 @@ class PCG64 {
     unsigned rot = static_cast<unsigned>(state_ >> 122);
     return (xored >> rot) | (xored << ((0u - rot) & 63u));
   }
+  // Buffered 32-bit output (numpy next_uint32): low half of a draw first, then
+  // the high half. The buffer persists in bit-generator state, as in numpy.
+  uint32_t next32() {
+    if (has32_) { has32_ = false; return buf32_; }
+    uint64_t v = next64();
+    has32_ = true;
+    buf32_ = static_cast<uint32_t>(v >> 32);
+    return static_cast<uint32_t>(v & 0xffffffffu);
+  }
   // [0,1) double via numpy's 53-bit method.
   double next_double() { return (next64() >> 11) * (1.0 / 9007199254740992.0); }
 
@@ -94,6 +103,8 @@ class PCG64 {
     step();
   }
   u128 state_ = 0, inc_ = 0;
+  bool has32_ = false;
+  uint32_t buf32_ = 0;
 };
 
 }  // namespace random

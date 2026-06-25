@@ -21,6 +21,23 @@ class NUMPP_API Generator {
   ndarray random(const Shape& shape);            // float64 in [0, 1)
   ndarray random(int64_t n) { return random(Shape{n}); }
 
+  // Bounded integers in [low, high) (or [low, high] if endpoint), int64 output.
+  ndarray integers(int64_t low, int64_t high, const Shape& shape, bool endpoint = false);
+  ndarray integers(int64_t low, int64_t high, int64_t n, bool endpoint = false) { return integers(low, high, Shape{n}, endpoint); }
+  ndarray integers(int64_t high, int64_t n) { return integers(0, high, Shape{n}, false); }
+
+  ndarray uniform(double low, double high, const Shape& shape);
+  ndarray uniform(double low, double high, int64_t n) { return uniform(low, high, Shape{n}); }
+
+  ndarray permutation(int64_t n);                // shuffled arange(n)
+  ndarray permutation(const ndarray& a);         // shuffled copy (along axis 0)
+  void shuffle(ndarray& a);                      // in place, along axis 0
+  ndarray choice(int64_t n, int64_t size, bool replace = true);
+
+  // Raw bounded draws (exposed for reuse/testing).
+  uint64_t bounded(uint64_t range_excl);         // Lemire, in [0, range_excl)
+  uint64_t interval(uint64_t max_inclusive);     // masked, in [0, max_inclusive]
+
  private:
   PCG64 bit_;
 };
