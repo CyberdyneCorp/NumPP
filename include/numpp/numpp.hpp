@@ -9,6 +9,7 @@
 #include "numpp/core/shape.hpp"
 #include "numpp/core/ndarray.hpp"
 #include "numpp/core/creation.hpp"
+#include "numpp/manip/manip.hpp"
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/linalg/linalg.hpp"
 #include "numpp/fft/fft.hpp"
