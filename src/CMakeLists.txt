@@ -7,6 +7,9 @@ add_library(numpp
     linalg/linalg.cpp
     fft/fft.cpp
     random/random.cpp
+    io/npy.cpp
+    io/npz.cpp
+    io/format.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
