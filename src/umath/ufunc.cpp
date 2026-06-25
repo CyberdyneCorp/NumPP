@@ -67,7 +67,8 @@ void zip1(const ndarray& aa, ndarray& res, F f) {
 }
 
 // ---- scalar kernels ----
-enum class BinOp { Add, Sub, Mul, Div, FloorDiv, Mod, Power, Min, Max, And, Or, Xor };
+enum class BinOp { Add, Sub, Mul, Div, FloorDiv, Mod, Power, Min, Max, And, Or, Xor,
+                   Fmin, Fmax, LShift, RShift };
 
 template <class T>
 T int_floordiv(T x, T y) {
@@ -97,11 +98,14 @@ T bin_scalar(BinOp op, T x, T y) {
       case BinOp::FloorDiv: return int_floordiv<T>(x, y);
       case BinOp::Mod: return static_cast<T>(x - int_floordiv<T>(x, y) * y);
       case BinOp::Power: return static_cast<T>(std::pow(static_cast<double>(x), static_cast<double>(y)));
-      case BinOp::Min: return std::min(x, y);
-      case BinOp::Max: return std::max(x, y);
+      case BinOp::Min: case BinOp::Fmin: return std::min(x, y);
+      case BinOp::Max: case BinOp::Fmax: return std::max(x, y);
       case BinOp::And: return static_cast<T>(x & y);
       case BinOp::Or: return static_cast<T>(x | y);
       case BinOp::Xor: return static_cast<T>(x ^ y);
+      case BinOp::LShift: return static_cast<T>(x << y);
+      case BinOp::RShift: return static_cast<T>(x >> y);
+      default: throw type_error("unsupported integer binary op");
     }
   } else {  // real floating
     switch (op) {
@@ -112,9 +116,12 @@ T bin_scalar(BinOp op, T x, T y) {
       case BinOp::FloorDiv: return std::floor(x / y);
       case BinOp::Mod: { T r = x - std::floor(x / y) * y; return r; }
       case BinOp::Power: return std::pow(x, y);
-      case BinOp::Min: return std::fmin(x, y);
-      case BinOp::Max: return std::fmax(x, y);
-      default: throw type_error("bitwise operation requires integer dtype");
+      // minimum/maximum propagate NaN; fmin/fmax ignore it (NumPy semantics).
+      case BinOp::Min: return std::isnan(x) ? x : std::isnan(y) ? y : std::min(x, y);
+      case BinOp::Max: return std::isnan(x) ? x : std::isnan(y) ? y : std::max(x, y);
+      case BinOp::Fmin: return std::fmin(x, y);
+      case BinOp::Fmax: return std::fmax(x, y);
+      default: throw type_error("bitwise/shift operation requires integer dtype");
     }
   }
   return T{};
@@ -155,12 +162,15 @@ DType arith_out(BinOp op, DType a, DType b) {
     case BinOp::Mod:
       if (p.is_complex()) throw type_error("floor_divide/remainder not supported for complex");
       return p;
-    case BinOp::Min: case BinOp::Max:
-      if (p.is_complex()) throw not_implemented_error("minimum/maximum on complex not yet implemented");
+    case BinOp::Min: case BinOp::Max: case BinOp::Fmin: case BinOp::Fmax:
+      if (p.is_complex()) throw not_implemented_error("min/max on complex not yet implemented");
       return p;
     case BinOp::And: case BinOp::Or: case BinOp::Xor:
       if (p.is_floating() || p.is_complex()) throw type_error("bitwise op requires integer/bool dtype");
       return p;
+    case BinOp::LShift: case BinOp::RShift:
+      if (p.is_floating() || p.is_complex()) throw type_error("shift requires integer dtype");
+      return p == kBool ? kInt8 : p;  // numpy promotes bool shifts to int8
     default:
       return p;
   }
@@ -263,33 +273,116 @@ ndarray absolute_impl(const ndarray& a) {
   return cdt == out_dt ? res : res.astype(out_dt);
 }
 
-enum class FUn { Sqrt, Exp, Log, Sin, Cos, Tan, Floor, Ceil };
+enum class FUn { Sqrt, Cbrt, Exp, Expm1, Log, Log2, Log10, Log1p, Sin, Cos, Tan,
+                 Asin, Acos, Atan, Sinh, Cosh, Tanh, Asinh, Acosh, Atanh,
+                 Deg2rad, Rad2deg, Floor, Ceil, Trunc, Rint };
+
+template <class T>  // T is float or double
+T funary_real(FUn op, T x) {
+  constexpr T pi = static_cast<T>(3.14159265358979323846);
+  switch (op) {
+    case FUn::Sqrt: return std::sqrt(x);   case FUn::Cbrt: return std::cbrt(x);
+    case FUn::Exp: return std::exp(x);     case FUn::Expm1: return std::expm1(x);
+    case FUn::Log: return std::log(x);     case FUn::Log2: return std::log2(x);
+    case FUn::Log10: return std::log10(x); case FUn::Log1p: return std::log1p(x);
+    case FUn::Sin: return std::sin(x);     case FUn::Cos: return std::cos(x);
+    case FUn::Tan: return std::tan(x);     case FUn::Asin: return std::asin(x);
+    case FUn::Acos: return std::acos(x);   case FUn::Atan: return std::atan(x);
+    case FUn::Sinh: return std::sinh(x);   case FUn::Cosh: return std::cosh(x);
+    case FUn::Tanh: return std::tanh(x);   case FUn::Asinh: return std::asinh(x);
+    case FUn::Acosh: return std::acosh(x); case FUn::Atanh: return std::atanh(x);
+    case FUn::Deg2rad: return x * pi / static_cast<T>(180);
+    case FUn::Rad2deg: return x * static_cast<T>(180) / pi;
+    case FUn::Floor: return std::floor(x); case FUn::Ceil: return std::ceil(x);
+    case FUn::Trunc: return std::trunc(x); case FUn::Rint: return std::rint(x);
+  }
+  return x;
+}
+
+template <class C>  // C is std::complex<...>
+C funary_cplx(FUn op, C x) {
+  switch (op) {
+    case FUn::Sqrt: return std::sqrt(x);  case FUn::Exp: return std::exp(x);
+    case FUn::Log: return std::log(x);    case FUn::Log10: return std::log10(x);
+    case FUn::Log2: return std::log(x) / std::log(C(2));
+    case FUn::Log1p: return std::log(C(1) + x);
+    case FUn::Sin: return std::sin(x);    case FUn::Cos: return std::cos(x);
+    case FUn::Tan: return std::tan(x);    case FUn::Asin: return std::asin(x);
+    case FUn::Acos: return std::acos(x);  case FUn::Atan: return std::atan(x);
+    case FUn::Sinh: return std::sinh(x);  case FUn::Cosh: return std::cosh(x);
+    case FUn::Tanh: return std::tanh(x);  case FUn::Asinh: return std::asinh(x);
+    case FUn::Acosh: return std::acosh(x);case FUn::Atanh: return std::atanh(x);
+    default: throw type_error("ufunc not supported for complex dtype");
+  }
+}
+
 ndarray unary_float(const ndarray& a, FUn op) {
-  if (a.dtype().is_complex() && (op == FUn::Floor || op == FUn::Ceil))
-    throw type_error("floor/ceil not supported for complex dtype");
   DType out_dt = to_float(a.dtype());
   DType cdt = proxy(out_dt);  // half -> float32
   ndarray aa = a.astype(cdt);
   ndarray res(aa.shape(), cdt, Order::C);
   visit_dtype(cdt.id(), [&](auto tag) {
     using T = typename decltype(tag)::type;
-    if constexpr (!(std::is_floating_point_v<T> || is_cplx<T>)) { (void)res; }
-    else zip1<T, T>(aa, res, [&](T x) -> T {
-      using std::sqrt; using std::exp; using std::log; using std::sin; using std::cos; using std::tan;
-      switch (op) {
-        case FUn::Sqrt: return sqrt(x);
-        case FUn::Exp: return exp(x);
-        case FUn::Log: return log(x);
-        case FUn::Sin: return sin(x);
-        case FUn::Cos: return cos(x);
-        case FUn::Tan: return tan(x);
-        case FUn::Floor: if constexpr (is_cplx<T>) return x; else return std::floor(x);
-        case FUn::Ceil: if constexpr (is_cplx<T>) return x; else return std::ceil(x);
-      }
-      return x;
-    });
+    if constexpr (std::is_floating_point_v<T>) zip1<T, T>(aa, res, [&](T x) { return funary_real<T>(op, x); });
+    else if constexpr (is_cplx<T>) zip1<T, T>(aa, res, [&](T x) { return funary_cplx<T>(op, x); });
+    else { (void)res; }
   });
   return cdt == out_dt ? res : res.astype(out_dt);
+}
+
+// binary float ufuncs (real only): arctan2, hypot, copysign
+enum class BinF { Atan2, Hypot, Copysign };
+ndarray binary_float(const ndarray& a, const ndarray& b, BinF op) {
+  DType p = result_type(a.dtype(), b.dtype());
+  if (p.is_complex()) throw type_error("arctan2/hypot/copysign not supported for complex");
+  DType out_dt = to_float(p);
+  DType cdt = proxy(out_dt);
+  Shape bs = broadcast_shapes(a.shape(), b.shape());
+  ndarray aa = a.astype(cdt).broadcast_to(bs);
+  ndarray bb = b.astype(cdt).broadcast_to(bs);
+  ndarray res(bs, cdt, Order::C);
+  visit_dtype(cdt.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_floating_point_v<T>)
+      zip2<T, T>(aa, bb, res, [&](T x, T y) {
+        switch (op) { case BinF::Atan2: return std::atan2(x, y);
+                      case BinF::Hypot: return std::hypot(x, y);
+                      case BinF::Copysign: return std::copysign(x, y); }
+        return T{};
+      });
+    else { (void)res; }
+  });
+  return cdt == out_dt ? res : res.astype(out_dt);
+}
+
+// predicates (bool result): isnan, isinf, isfinite, signbit
+enum class Pred { Isnan, Isinf, Isfinite, Signbit };
+ndarray unary_pred(const ndarray& a, Pred op) {
+  if (a.dtype().is_complex() && op == Pred::Signbit)
+    throw type_error("signbit not supported for complex");
+  DType cdt = proxy(to_float(a.dtype()));
+  ndarray aa = a.astype(cdt);
+  ndarray res(aa.shape(), kBool, Order::C);
+  visit_dtype(cdt.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_floating_point_v<T>)
+      zip1<T, bool>(aa, res, [&](T x) {
+        switch (op) { case Pred::Isnan: return std::isnan(x); case Pred::Isinf: return std::isinf(x);
+                      case Pred::Isfinite: return std::isfinite(x); case Pred::Signbit: return std::signbit(x); }
+        return false;
+      });
+    else if constexpr (is_cplx<T>)
+      zip1<T, bool>(aa, res, [&](T x) {
+        switch (op) {
+          case Pred::Isnan: return std::isnan(x.real()) || std::isnan(x.imag());
+          case Pred::Isinf: return std::isinf(x.real()) || std::isinf(x.imag());
+          case Pred::Isfinite: return std::isfinite(x.real()) && std::isfinite(x.imag());
+          default: return false;
+        }
+      });
+    else { (void)res; }
+  });
+  return res;
 }
 
 // ---- reductions ----
@@ -469,6 +562,113 @@ ndarray any(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
 }
 ndarray all(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   return reduce(a, RedOp::All, axis, keepdims, std::nullopt);
+}
+
+ndarray fmin(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Fmin); }
+ndarray fmax(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::Fmax); }
+ndarray left_shift(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::LShift); }
+ndarray right_shift(const ndarray& a, const ndarray& b) { return binary(a, b, BinOp::RShift); }
+ndarray arctan2(const ndarray& a, const ndarray& b) { return binary_float(a, b, BinF::Atan2); }
+ndarray hypot(const ndarray& a, const ndarray& b) { return binary_float(a, b, BinF::Hypot); }
+ndarray copysign(const ndarray& a, const ndarray& b) { return binary_float(a, b, BinF::Copysign); }
+
+ndarray cbrt(const ndarray& a) { return unary_float(a, FUn::Cbrt); }
+ndarray expm1(const ndarray& a) { return unary_float(a, FUn::Expm1); }
+ndarray log2(const ndarray& a) { return unary_float(a, FUn::Log2); }
+ndarray log10(const ndarray& a) { return unary_float(a, FUn::Log10); }
+ndarray log1p(const ndarray& a) { return unary_float(a, FUn::Log1p); }
+ndarray arcsin(const ndarray& a) { return unary_float(a, FUn::Asin); }
+ndarray arccos(const ndarray& a) { return unary_float(a, FUn::Acos); }
+ndarray arctan(const ndarray& a) { return unary_float(a, FUn::Atan); }
+ndarray sinh(const ndarray& a) { return unary_float(a, FUn::Sinh); }
+ndarray cosh(const ndarray& a) { return unary_float(a, FUn::Cosh); }
+ndarray tanh(const ndarray& a) { return unary_float(a, FUn::Tanh); }
+ndarray arcsinh(const ndarray& a) { return unary_float(a, FUn::Asinh); }
+ndarray arccosh(const ndarray& a) { return unary_float(a, FUn::Acosh); }
+ndarray arctanh(const ndarray& a) { return unary_float(a, FUn::Atanh); }
+ndarray deg2rad(const ndarray& a) { return unary_float(a, FUn::Deg2rad); }
+ndarray rad2deg(const ndarray& a) { return unary_float(a, FUn::Rad2deg); }
+ndarray trunc(const ndarray& a) { return unary_float(a, FUn::Trunc); }
+ndarray rint(const ndarray& a) { return unary_float(a, FUn::Rint); }
+
+ndarray isnan(const ndarray& a) { return unary_pred(a, Pred::Isnan); }
+ndarray isinf(const ndarray& a) { return unary_pred(a, Pred::Isinf); }
+ndarray isfinite(const ndarray& a) { return unary_pred(a, Pred::Isfinite); }
+ndarray signbit(const ndarray& a) { return unary_pred(a, Pred::Signbit); }
+
+ndarray clip(const ndarray& a, const ndarray& lo, const ndarray& hi) {
+  return minimum(maximum(a, lo), hi);
+}
+
+ndarray scalar_like(double value, DType like, bool is_float) {
+  DType sdt;
+  if (is_float) sdt = (like.is_floating() || like.is_complex()) ? like : kFloat64;
+  else sdt = (like == kBool) ? default_int() : like;
+  ndarray tmp(Shape{}, kFloat64, Order::C);
+  tmp.set_item<double>({}, value);
+  return tmp.astype(sdt, Casting::Unsafe);
+}
+
+ndarray var(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
+  int64_t n = axis ? a.shape()[normalize_axis(*axis, a.ndim())] : a.size();
+  ndarray m = mean(a, axis, /*keepdims=*/true);
+  ndarray sq = square(absolute(subtract(a, m)));         // real, nonneg; complex-safe
+  ndarray s = sum(sq, axis, keepdims);
+  ndarray denom = scalar_like(static_cast<double>(n - ddof), s.dtype(), true);
+  return divide(s, denom);
+}
+ndarray std(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
+  return sqrt(var(a, axis, keepdims, ddof));
+}
+
+ndarray where(const ndarray& cond, const ndarray& a, const ndarray& b) {
+  DType odt = result_type(a.dtype(), b.dtype());
+  Shape bs = broadcast_shapes(broadcast_shapes(cond.shape(), a.shape()), b.shape());
+  ndarray cc = cond.astype(kBool).broadcast_to(bs);
+  ndarray aa = a.astype(odt).broadcast_to(bs);
+  ndarray bb = b.astype(odt).broadcast_to(bs);
+  ndarray res(bs, odt, Order::C);
+  const int64_t nd = static_cast<int64_t>(bs.size()), total = shape_size(bs);
+  if (total == 0) return res;
+  visit_dtype(odt.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    T* out = res.template typed_data<T>();
+    std::vector<int64_t> idx(nd, 0);
+    int64_t lin = 0;
+    while (true) {
+      int64_t co = cc.offset(), ao = aa.offset(), bo = bb.offset();
+      for (int64_t i = 0; i < nd; ++i) { co += idx[i] * cc.strides()[i]; ao += idx[i] * aa.strides()[i]; bo += idx[i] * bb.strides()[i]; }
+      bool c; T av, bv;
+      std::memcpy(&c, cc.buffer()->data() + co, 1);
+      std::memcpy(&av, aa.buffer()->data() + ao, sizeof(T));
+      std::memcpy(&bv, bb.buffer()->data() + bo, sizeof(T));
+      out[lin++] = c ? av : bv;
+      int64_t ax = nd - 1;
+      for (; ax >= 0; --ax) { if (++idx[ax] < bs[ax]) break; idx[ax] = 0; }
+      if (ax < 0) break;
+    }
+  });
+  return res;
+}
+
+std::vector<ndarray> nonzero(const ndarray& a) {
+  ndarray mask = a.astype(kBool).ascontiguousarray();
+  const int64_t nd = a.ndim(), total = a.size();
+  const bool* m = total ? mask.typed_data<bool>() : nullptr;
+  std::vector<std::vector<int64_t>> coords(nd);
+  std::vector<int64_t> idx(nd, 0);
+  for (int64_t lin = 0; lin < total; ++lin) {
+    if (m[lin]) for (int64_t d = 0; d < nd; ++d) coords[d].push_back(idx[d]);
+    int64_t ax = nd - 1;
+    for (; ax >= 0; --ax) { if (++idx[ax] < a.shape()[ax]) break; idx[ax] = 0; }
+  }
+  std::vector<ndarray> out;
+  for (int64_t d = 0; d < nd; ++d) {
+    ndarray col(Shape{static_cast<int64_t>(coords[d].size())}, kInt64, Order::C);
+    for (size_t i = 0; i < coords[d].size(); ++i) col.set_item<int64_t>({static_cast<int64_t>(i)}, coords[d][i]);
+    out.push_back(col);
+  }
+  return out;
 }
 
 }  // namespace numpp
