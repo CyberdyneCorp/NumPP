@@ -11,7 +11,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 0–2 | Foundation, ndarray, dtypes | bootstrap-numpp-foundation | ✅ merged+archived |
 | 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
-| 5 | fft | add-fft | 🟡 in progress |
+| 5 | fft | add-fft | ✅ merged+archived |
 | 6 | random | — | ⬜ |
 | 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
 | 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
@@ -63,9 +63,9 @@ clang+gcc+ASan green. Compute in double/complex<double>, output dtype per numpy.
 
 - [x] DFT engine: radix-2 Cooley-Tukey + Bluestein (arbitrary/prime n)
 - [x] fft/ifft (axis, n pad/truncate, norm backward/ortho/forward); complex64/128 out
-- [ ] rfft/irfft, hfft/ihfft
-- [ ] fftfreq/rfftfreq/fftshift/ifftshift
-- [ ] fft2/ifft2/rfft2/irfft2, fftn/ifftn/rfftn/irfftn
+- [x] rfft/irfft, hfft/ihfft
+- [x] fftfreq/rfftfreq/fftshift/ifftshift
+- [x] fft2/ifft2/rfft2/irfft2, fftn/ifftn/rfftn/irfftn
 
 Increment 1: 7 fft cases (95 total / 506 checks), 0 divergences, clang+gcc+ASan green.
 

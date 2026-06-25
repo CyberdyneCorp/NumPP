@@ -1,5 +1,9 @@
 #include "numpp/fft/fft.hpp"
 
+#include "numpp/core/creation.hpp"
+#include "numpp/umath/ufunc.hpp"
+
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <cstring>
@@ -119,6 +123,173 @@ ndarray fft(const ndarray& a, std::optional<int64_t> n, int64_t axis, const std:
 }
 ndarray ifft(const ndarray& a, std::optional<int64_t> n, int64_t axis, const std::string& norm) {
   return transform_axis(a, n, axis, norm, /*inverse=*/true);
+}
+
+namespace {
+int64_t norm_axis(int64_t axis, int64_t d) { return axis < 0 ? axis + d : axis; }
+std::string swap_norm(const std::string& norm) {
+  if (norm == "backward") return "forward";
+  if (norm == "forward") return "backward";
+  return norm;  // ortho
+}
+ndarray slice_axis(const ndarray& a, int64_t axis, int64_t start, int64_t stop) {
+  std::vector<IndexItem> items;
+  for (int64_t i = 0; i < a.ndim(); ++i)
+    items.push_back(i == axis ? IndexItem{Slice{start, stop, 1}} : IndexItem{Slice{}});
+  return a.index(items);
+}
+DType real_dtype(DType in) { return (in == kComplex64 || in == kFloat32) ? kFloat32 : kFloat64; }
+
+// Rebuild a full length-`nout` complex spectrum from a half spectrum via Hermitian symmetry.
+ndarray build_hermitian(const ndarray& a, int64_t ax, int64_t nout) {
+  const int64_t d = a.ndim(), m = a.shape()[ax];
+  std::vector<int64_t> perm;
+  for (int64_t i = 0; i < d; ++i) if (i != ax) perm.push_back(i);
+  perm.push_back(ax);
+  ndarray moved = a.astype(kComplex128).transpose(perm).ascontiguousarray();
+  Shape oshape = moved.shape(); oshape.back() = nout;
+  ndarray out(oshape, kComplex128, Order::C);
+  const int64_t outer = m > 0 ? moved.size() / m : 0;
+  const cd* src = moved.size() ? moved.typed_data<cd>() : nullptr;
+  cd* dst = out.size() ? out.typed_data<cd>() : nullptr;
+  for (int64_t r = 0; r < outer; ++r) {
+    auto row = [&](int64_t k) { return k < m ? src[r * m + k] : cd(0); };
+    dst[r * nout + 0] = row(0);
+    for (int64_t k = 1; 2 * k < nout; ++k) { cd s = row(k); dst[r * nout + k] = s; dst[r * nout + (nout - k)] = std::conj(s); }
+    if (nout % 2 == 0) dst[r * nout + nout / 2] = row(nout / 2);
+  }
+  std::vector<int64_t> inv(d);
+  for (int64_t i = 0; i < d; ++i) inv[perm[i]] = i;
+  return out.transpose(inv).ascontiguousarray();
+}
+
+ndarray roll_axis(const ndarray& a, int64_t shift, int64_t axis) {
+  const int64_t d = a.ndim(), ax = norm_axis(axis, d), n = a.shape()[ax];
+  if (n == 0) return a.copy();
+  const int64_t sh = ((shift % n) + n) % n, es = a.itemsize();
+  std::vector<int64_t> perm;
+  for (int64_t i = 0; i < d; ++i) if (i != ax) perm.push_back(i);
+  perm.push_back(ax);
+  ndarray moved = a.transpose(perm).ascontiguousarray();
+  ndarray out(moved.shape(), a.dtype(), Order::C);
+  const int64_t outer = moved.size() / n;
+  const char* src = moved.bytes(); char* dst = out.bytes();
+  for (int64_t r = 0; r < outer; ++r)
+    for (int64_t j = 0; j < n; ++j)
+      std::memcpy(dst + (r * n + (j + sh) % n) * es, src + (r * n + j) * es, es);
+  std::vector<int64_t> inv(d);
+  for (int64_t i = 0; i < d; ++i) inv[perm[i]] = i;
+  return out.transpose(inv).ascontiguousarray();
+}
+}  // namespace
+
+ndarray rfft(const ndarray& a, std::optional<int64_t> n, int64_t axis, const std::string& norm) {
+  const int64_t ax = norm_axis(axis, a.ndim());
+  const int64_t L = n ? *n : a.shape()[ax];
+  return slice_axis(fft(a, n, axis, norm), ax, 0, L / 2 + 1).ascontiguousarray();
+}
+ndarray irfft(const ndarray& a, std::optional<int64_t> n, int64_t axis, const std::string& norm) {
+  const int64_t ax = norm_axis(axis, a.ndim());
+  const int64_t nout = n ? *n : 2 * (a.shape()[ax] - 1);
+  ndarray full = build_hermitian(a, ax, nout);
+  return real(ifft(full, nout, axis, norm)).astype(real_dtype(a.dtype()));
+}
+ndarray hfft(const ndarray& a, std::optional<int64_t> n, int64_t axis, const std::string& norm) {
+  const int64_t ax = norm_axis(axis, a.ndim());
+  const int64_t nout = n ? *n : 2 * (a.shape()[ax] - 1);
+  return irfft(conj(a), nout, axis, swap_norm(norm));
+}
+ndarray ihfft(const ndarray& a, std::optional<int64_t> n, int64_t axis, const std::string& norm) {
+  return conj(rfft(a, n, axis, swap_norm(norm)));
+}
+
+namespace {
+std::vector<int64_t> default_axes(const ndarray& a, std::optional<std::vector<int64_t>> axes,
+                                  bool two_d) {
+  if (axes) return *axes;
+  std::vector<int64_t> ax;
+  if (two_d) { ax = {-2, -1}; }
+  else for (int64_t i = 0; i < a.ndim(); ++i) ax.push_back(i);
+  return ax;
+}
+std::optional<int64_t> s_at(const std::optional<std::vector<int64_t>>& s, size_t i) {
+  if (s && i < s->size()) return (*s)[i];
+  return std::nullopt;
+}
+}  // namespace
+
+ndarray fftn(const ndarray& a, std::optional<std::vector<int64_t>> s,
+             std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  std::vector<int64_t> ax = default_axes(a, axes, false);
+  ndarray r = a;
+  for (size_t i = 0; i < ax.size(); ++i) r = fft(r, s_at(s, i), ax[i], norm);
+  return r;
+}
+ndarray ifftn(const ndarray& a, std::optional<std::vector<int64_t>> s,
+              std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  std::vector<int64_t> ax = default_axes(a, axes, false);
+  ndarray r = a;
+  for (size_t i = 0; i < ax.size(); ++i) r = ifft(r, s_at(s, i), ax[i], norm);
+  return r;
+}
+ndarray fft2(const ndarray& a, std::optional<std::vector<int64_t>> s,
+             std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  return fftn(a, s, default_axes(a, axes, true), norm);
+}
+ndarray ifft2(const ndarray& a, std::optional<std::vector<int64_t>> s,
+              std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  return ifftn(a, s, default_axes(a, axes, true), norm);
+}
+ndarray rfftn(const ndarray& a, std::optional<std::vector<int64_t>> s,
+              std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  std::vector<int64_t> ax = default_axes(a, axes, false);
+  ndarray r = rfft(a, s_at(s, ax.size() - 1), ax.back(), norm);   // real transform on last axis
+  for (size_t i = 0; i + 1 < ax.size(); ++i) r = fft(r, s_at(s, i), ax[i], norm);
+  return r;
+}
+ndarray irfftn(const ndarray& a, std::optional<std::vector<int64_t>> s,
+               std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  std::vector<int64_t> ax = default_axes(a, axes, false);
+  ndarray r = a;
+  for (size_t i = 0; i + 1 < ax.size(); ++i) r = ifft(r, s_at(s, i), ax[i], norm);
+  return irfft(r, s_at(s, ax.size() - 1), ax.back(), norm);       // real inverse on last axis
+}
+ndarray rfft2(const ndarray& a, std::optional<std::vector<int64_t>> s,
+              std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  return rfftn(a, s, default_axes(a, axes, true), norm);
+}
+ndarray irfft2(const ndarray& a, std::optional<std::vector<int64_t>> s,
+               std::optional<std::vector<int64_t>> axes, const std::string& norm) {
+  return irfftn(a, s, default_axes(a, axes, true), norm);
+}
+
+ndarray fftfreq(int64_t n, double d) {
+  ndarray f(Shape{n}, kFloat64, Order::C);
+  const double inv = 1.0 / (static_cast<double>(n) * d);
+  const int64_t half = (n - 1) / 2 + 1;
+  for (int64_t i = 0; i < n; ++i) f.set_item<double>({i}, (i < half ? i : i - n) * inv);
+  return f;
+}
+ndarray rfftfreq(int64_t n, double d) {
+  const int64_t m = n / 2 + 1;
+  ndarray f(Shape{m}, kFloat64, Order::C);
+  const double inv = 1.0 / (static_cast<double>(n) * d);
+  for (int64_t i = 0; i < m; ++i) f.set_item<double>({i}, i * inv);
+  return f;
+}
+ndarray fftshift(const ndarray& a, std::optional<std::vector<int64_t>> axes) {
+  std::vector<int64_t> ax;
+  if (axes) ax = *axes; else for (int64_t i = 0; i < a.ndim(); ++i) ax.push_back(i);
+  ndarray r = a;
+  for (int64_t x : ax) { int64_t n = a.shape()[norm_axis(x, a.ndim())]; r = roll_axis(r, n / 2, x); }
+  return r;
+}
+ndarray ifftshift(const ndarray& a, std::optional<std::vector<int64_t>> axes) {
+  std::vector<int64_t> ax;
+  if (axes) ax = *axes; else for (int64_t i = 0; i < a.ndim(); ++i) ax.push_back(i);
+  ndarray r = a;
+  for (int64_t x : ax) { int64_t n = a.shape()[norm_axis(x, a.ndim())]; r = roll_axis(r, -(n / 2), x); }
+  return r;
 }
 
 }  // namespace fft
