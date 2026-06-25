@@ -1,5 +1,10 @@
 #include "numpp/io/format.hpp"
 
+#include "numpp/datetime/datetime.hpp"
+#include "numpp/io/npy.hpp"
+#include "numpp/strings/strings.hpp"
+#include "numpp/struct/struct.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -31,10 +36,44 @@ bool is_default_dtype(DType d) { return d == kInt64 || d == kFloat64 || d == kCo
 
 // Produce padded element strings (C order) for the whole array.
 std::vector<std::string> element_strings(const ndarray& a) {
-  ndarray c = a.astype(a.dtype()).ascontiguousarray();
+  ndarray c = a.ascontiguousarray();
   const int64_t n = c.size();
   std::vector<std::string> out(n);
   const char k = c.dtype().kind();
+  if (k == 'U' || k == 'S') {
+    for (int64_t i = 0; i < n; ++i) out[i] = "'" + get_string(c, i) + "'";
+    return out;
+  }
+  if (k == 'M' || k == 'm') {
+    for (int64_t i = 0; i < n; ++i) {
+      std::string v = format_datetime(c.dtype(), dt_get(c, i));
+      out[i] = k == 'M' ? "'" + v + "'" : v;
+    }
+    return out;
+  }
+  if (k == 'V') {  // structured: each record as a tuple of its fields
+    const auto& fields = c.dtype().meta()->fields;
+    std::vector<ndarray> fv;
+    for (const auto& f : fields) fv.push_back(field_view(c, f.name));
+    auto fmt_scalar = [](const ndarray& v, int64_t i) {
+      std::string s;
+      visit_dtype(v.dtype().id(), [&](auto tag) {
+        using T = typename decltype(tag)::type;
+        if constexpr (std::is_same_v<T, bool>) s = v.template item<bool>({i}) ? "True" : "False";
+        else if constexpr (std::is_integral_v<T>) s = std::to_string(static_cast<long long>(v.template item<T>({i})));
+        else if constexpr (std::is_same_v<T, half>) s = fmt_fixed(static_cast<double>(static_cast<float>(v.template item<half>({i}))));
+        else if constexpr (std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>) { auto z = v.template item<T>({i}); s = fmt_fixed(z.real()) + (z.imag() < 0 ? "-" : "+") + fmt_fixed(std::abs(z.imag())) + "j"; }
+        else s = fmt_fixed(static_cast<double>(v.template item<T>({i})));
+      });
+      return s;
+    };
+    for (int64_t i = 0; i < n; ++i) {
+      std::string rec = "(";
+      for (size_t j = 0; j < fv.size(); ++j) { rec += fmt_scalar(fv[j], i); if (j + 1 < fv.size()) rec += ", "; }
+      out[i] = rec + ")";
+    }
+    return out;
+  }
   if (k == 'i' || k == 'u' || c.dtype() == kBool) {
     size_t w = 0;
     visit_dtype(c.dtype().id(), [&](auto tag) {
@@ -143,10 +182,22 @@ std::string array_repr(const ndarray& a) {
   std::string body;
   if (a.size() == 0) body = "[]";
   else body = a.ndim() == 0 ? format_body(a, ", ", 6) : format_body(a, ", ", 6);
-  std::string out = "array(" + body + ")";
+  if (a.dtype().is_extended()) {
+    const char k = a.dtype().kind();
+    std::string suffix;
+    if (k == 'M') suffix = std::string("'datetime64[") + a.dtype().meta()->unit + "]'";
+    else if (k == 'm') suffix = std::string("'timedelta64[") + a.dtype().meta()->unit + "]'";
+    else if (k == 'V') {
+      suffix = "[";
+      const auto& fields = a.dtype().meta()->fields;
+      for (size_t j = 0; j < fields.size(); ++j) { suffix += "('" + fields[j].name + "', '" + dtype_to_descr(fields[j].dtype) + "')"; if (j + 1 < fields.size()) suffix += ", "; }
+      suffix += "]";
+    } else suffix = "'" + dtype_to_descr(a.dtype()) + "'";
+    return "array(" + body + ", dtype=" + suffix + ")";
+  }
   if (!is_default_dtype(a.dtype()))
-    out = "array(" + body + ", dtype=" + a.dtype().name() + ")";
-  return out;
+    return "array(" + body + ", dtype=" + a.dtype().name() + ")";
+  return "array(" + body + ")";
 }
 
 }  // namespace numpp

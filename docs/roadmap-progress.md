@@ -15,7 +15,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 6 | random | add-random | ✅ merged+archived |
 | 7 | I/O (.npy/.npz, printing/repr) | add-io | ✅ merged+archived |
 | 8 | sorting/searching/counting, set ops, unique | add-sorting | ✅ merged+archived |
-| 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
+| 9 | structured/record dtypes, datetime64, strings | add-dtypes-extended | ✅ merged+archived |
 | 10 | GPU kernel coverage beyond GEMM | — | ⬜ |
 | 11 | hardening, docs, v1.0 | — | ⬜ |
 
@@ -94,6 +94,15 @@ Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 d
 - [x] unique(+index/inverse/counts), set ops, bincount, histogram
 
 Increment 1: 7 cases (153 total / 776 checks), 0 divergences, clang+gcc+ASan green.
+
+## Phase 9 — extended dtypes: sub-tracker (branch phase-9-dtypes)
+
+- [x] Core DType extended with shared metadata side-channel (numeric dtypes unchanged; 887 checks green)
+- [x] (a) strings 'U'/'S': creation, get/set, equality, printing, .npy descr
+- [x] (b) datetime64/timedelta64 (units D/s, ISO parse/format, arithmetic, repr, .npy)
+- [x] (c) structured/record dtypes (field table, field_view aliasing parent, get/set, printing exact); .npy struct descr deferred -> issue
+
+Increment (a): 5 cases (166 total / 910 checks), 0 divergences, clang+gcc+ASan green.
 
 ## Bug log (oracle divergences → GitHub issues)
 
