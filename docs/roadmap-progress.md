@@ -13,7 +13,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
 | 5 | fft | add-fft | ✅ merged+archived |
 | 6 | random | add-random | ✅ merged+archived |
-| 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
+| 7 | I/O (.npy/.npz, printing/repr) | add-io | 🟡 in progress |
 | 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
 | 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
 | 10 | GPU kernel coverage beyond GEMM | — | ⬜ |
@@ -78,6 +78,14 @@ Increment 1: 7 fft cases (95 total / 506 checks), 0 divergences, clang+gcc+ASan 
 
 Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
 0 divergences, clang+gcc+ASan green.
+
+## Phase 7 — I/O: sub-tracker (branch phase-7-io)
+
+- [x] NPY save/load (all dtypes, C/F order, v1.0 write/v1.0+v2.0 read); oracle uses numpp::load now
+- [ ] NPZ savez/savez_compressed/load
+- [ ] array printing (str/repr, summarization, dtype suffix)
+
+Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 divergences.
 
 ## Bug log (oracle divergences → GitHub issues)
 
