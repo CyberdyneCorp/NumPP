@@ -10,4 +10,5 @@
 #include "numpp/core/ndarray.hpp"
 #include "numpp/core/creation.hpp"
 #include "numpp/umath/ufunc.hpp"
+#include "numpp/linalg/linalg.hpp"
 #include "numpp/backend/backend.hpp"
