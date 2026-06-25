@@ -21,6 +21,8 @@ namespace linalg {
 struct SignLogDet { ndarray sign; ndarray logabsdet; };
 struct QRResult { ndarray q; ndarray r; };
 struct EighResult { ndarray eigenvalues; ndarray eigenvectors; };
+struct SVDResult { ndarray u; ndarray s; ndarray vh; };
+struct LstsqResult { ndarray solution; ndarray residuals; ndarray rank; ndarray singular_values; };
 
 NUMPP_API ndarray solve(const ndarray& a, const ndarray& b);
 NUMPP_API ndarray inv(const ndarray& a);
@@ -35,6 +37,12 @@ NUMPP_API QRResult qr(const ndarray& a, const std::string& mode = "reduced");
 // Hermitian/symmetric eigensolver, eigenvalues ascending.
 NUMPP_API EighResult eigh(const ndarray& a);
 NUMPP_API ndarray eigvalsh(const ndarray& a);
+
+NUMPP_API SVDResult svd(const ndarray& a, bool full_matrices = true);
+NUMPP_API ndarray svdvals(const ndarray& a);                 // singular values, descending
+NUMPP_API ndarray pinv(const ndarray& a, double rcond = 1e-15);
+NUMPP_API ndarray matrix_rank(const ndarray& a);
+NUMPP_API LstsqResult lstsq(const ndarray& a, const ndarray& b, double rcond = -1.0);
 
 // Norms. Default: 2-norm (vector) / Frobenius (matrix). String ords: "fro","nuc".
 NUMPP_API ndarray norm(const ndarray& a);

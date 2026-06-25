@@ -10,6 +10,7 @@ add_executable(numpp_tests
     test_ufunc3.cpp
     test_linalg.cpp
     test_linalg2.cpp
+    test_linalg3.cpp
 )
 target_link_libraries(numpp_tests PRIVATE numpp::numpp)
 target_include_directories(numpp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

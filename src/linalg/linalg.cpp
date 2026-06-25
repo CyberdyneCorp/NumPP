@@ -427,6 +427,139 @@ EighResult eigh(const ndarray& a) {
 }
 
 namespace {
+// Orthonormal-complete `have` columns (m x have) to `want` columns via modified
+// Gram-Schmidt against the standard basis (preserves the original columns).
+template <class T>
+std::vector<T> gram_schmidt_extend(const std::vector<T>& cols, int m, int have, int want) {
+  std::vector<std::vector<T>> basis;
+  for (int c = 0; c < have; ++c) { std::vector<T> v(m); for (int i = 0; i < m; ++i) v[i] = cols[i * have + c]; basis.push_back(v); }
+  for (int e = 0; e < m && (int)basis.size() < want; ++e) {
+    std::vector<T> v(m, T(0)); v[e] = T(1);
+    for (auto& b : basis) { T d(0); for (int i = 0; i < m; ++i) d += conj_(b[i]) * v[i]; for (int i = 0; i < m; ++i) v[i] -= d * b[i]; }
+    double nrm = 0; for (int i = 0; i < m; ++i) { double a = std::abs(v[i]); nrm += a * a; } nrm = std::sqrt(nrm);
+    if (nrm > 1e-9) { for (int i = 0; i < m; ++i) v[i] /= T(nrm); basis.push_back(v); }
+  }
+  std::vector<T> out(static_cast<size_t>(m) * want, T(0));
+  for (int c = 0; c < (int)basis.size() && c < want; ++c) for (int i = 0; i < m; ++i) out[i * want + c] = basis[c][i];
+  return out;
+}
+
+template <class T>
+SVDResult svd_impl(const ndarray& a, bool full_matrices, Kind k) {
+  const int m = static_cast<int>(a.shape()[0]), n = static_cast<int>(a.shape()[1]), kk = std::min(m, n);
+  const bool wide = m < n;
+  std::vector<T> A = to_vec<T>(a, k.compute);
+  const int gN = wide ? m : n;
+  std::vector<T> G(static_cast<size_t>(gN) * gN, T(0));
+  if (!wide) for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) { T s(0); for (int p = 0; p < m; ++p) s += conj_(A[p * n + i]) * A[p * n + j]; G[i * gN + j] = s; }
+  else       for (int i = 0; i < m; ++i) for (int j = 0; j < m; ++j) { T s(0); for (int p = 0; p < n; ++p) s += A[i * n + p] * conj_(A[j * n + p]); G[i * gN + j] = s; }
+  ndarray Gnd = from_vec<T>(G, {(int64_t)gN, (int64_t)gN}, k.compute, k.compute);
+  std::vector<double> ev; ndarray evec;
+  hermitian_eig(Gnd, ev, &evec, la_kind(k.compute));
+  std::vector<T> W = to_vec<T>(evec, k.compute);  // gN x gN, columns ascending
+  std::vector<double> sd(kk);
+  for (int i = 0; i < kk; ++i) { double e = ev[gN - 1 - i]; sd[i] = e > 0 ? std::sqrt(e) : 0.0; }
+
+  std::vector<T> Uout, Vout;
+  int ucols = full_matrices ? m : kk;
+  int vcols;
+  if (!wide) {
+    std::vector<T> V(static_cast<size_t>(n) * n);                  // n x n (kk == n)
+    for (int c = 0; c < n; ++c) for (int i = 0; i < n; ++i) V[i * n + c] = W[i * gN + (gN - 1 - c)];
+    std::vector<T> U(static_cast<size_t>(m) * kk, T(0));
+    for (int c = 0; c < kk; ++c) if (sd[c] > 0) for (int i = 0; i < m; ++i) { T s(0); for (int p = 0; p < n; ++p) s += A[i * n + p] * V[p * n + c]; U[i * kk + c] = s / T(sd[c]); }
+    Uout = full_matrices ? gram_schmidt_extend<T>(U, m, kk, m) : U;
+    Vout = V; vcols = n;
+  } else {
+    std::vector<T> U(static_cast<size_t>(m) * m);                  // m x m (kk == m)
+    for (int c = 0; c < m; ++c) for (int i = 0; i < m; ++i) U[i * m + c] = W[i * gN + (gN - 1 - c)];
+    std::vector<T> V(static_cast<size_t>(n) * kk, T(0));
+    for (int c = 0; c < kk; ++c) if (sd[c] > 0) for (int i = 0; i < n; ++i) { T s(0); for (int p = 0; p < m; ++p) s += conj_(A[p * n + i]) * U[p * m + c]; V[i * kk + c] = s / T(sd[c]); }
+    if (full_matrices) { Uout = U; Vout = gram_schmidt_extend<T>(V, n, kk, n); vcols = n; }
+    else { std::vector<T> Ur(static_cast<size_t>(m) * kk); for (int i = 0; i < m; ++i) for (int c = 0; c < kk; ++c) Ur[i * kk + c] = U[i * m + c]; Uout = Ur; Vout = V; vcols = kk; }
+  }
+  std::vector<T> Vh(static_cast<size_t>(vcols) * n);
+  for (int r = 0; r < vcols; ++r) for (int j = 0; j < n; ++j) Vh[r * n + j] = conj_(Vout[j * vcols + r]);
+
+  SVDResult out;
+  out.u = from_vec<T>(Uout, {(int64_t)m, (int64_t)ucols}, k.compute, k.out);
+  DType real_out = (k.out == kComplex64 || k.out == kFloat32) ? kFloat32 : kFloat64;
+  ndarray sArr(Shape{(int64_t)kk}, kFloat64, Order::C);
+  for (int i = 0; i < kk; ++i) sArr.set_item<double>({i}, sd[i]);
+  out.s = sArr.astype(real_out);
+  out.vh = from_vec<T>(Vh, {(int64_t)vcols, (int64_t)n}, k.compute, k.out);
+  return out;
+}
+
+double dtype_eps(DType d) { return (d == kFloat32) ? 1.1920928955078125e-7 : 2.220446049250313e-16; }
+}  // namespace
+
+SVDResult svd(const ndarray& a, bool full_matrices) {
+  if (a.ndim() != 2) throw not_implemented_error("svd requires a 2-D array");
+  Kind k = la_kind(a.dtype());
+  if (k.cmplx) return svd_impl<std::complex<double>>(a, full_matrices, k);
+  return svd_impl<double>(a, full_matrices, k);
+}
+ndarray svdvals(const ndarray& a) { return svd(a, false).s; }
+
+ndarray pinv(const ndarray& a, double rcond) {
+  SVDResult r = svd(a, /*full_matrices=*/false);
+  const int64_t kk = r.s.shape()[0];
+  ndarray smax = amax(r.s);
+  double smax_d = smax.astype(kFloat64).item<double>({});
+  double tol = rcond * smax_d;
+  ndarray sd = r.s.astype(kFloat64);
+  ndarray sinv(Shape{kk}, kFloat64, Order::C);
+  for (int64_t i = 0; i < kk; ++i) { double s = sd.item<double>({i}); sinv.set_item<double>({i}, s > tol ? 1.0 / s : 0.0); }
+  ndarray V = conj(r.vh).transpose();              // n x kk
+  ndarray Uh = conj(r.u).transpose();              // kk x m
+  ndarray scaled = multiply(Uh, sinv.reshape({kk, 1}));
+  return matmul(V, scaled).astype(la_kind(a.dtype()).out);
+}
+
+ndarray matrix_rank(const ndarray& a) {
+  ndarray s = svdvals(a).astype(kFloat64);
+  const int64_t kk = s.shape()[0];
+  double smax = kk ? amax(s).item<double>({}) : 0.0;
+  double tol = smax * std::max<int64_t>(a.shape()[0], a.shape()[1]) * dtype_eps(la_kind(a.dtype()).out);
+  int64_t rank = 0;
+  for (int64_t i = 0; i < kk; ++i) if (s.item<double>({i}) > tol) ++rank;
+  ndarray out(Shape{}, kInt64, Order::C); out.set_item<int64_t>({}, rank);
+  return out;
+}
+
+LstsqResult lstsq(const ndarray& a, const ndarray& b, double rcond) {
+  SVDResult r = svd(a, /*full_matrices=*/false);
+  const int m = static_cast<int>(a.shape()[0]), n = static_cast<int>(a.shape()[1]);
+  const int64_t kk = r.s.shape()[0];
+  ndarray sd = r.s.astype(kFloat64);
+  double smax = kk ? amax(sd).item<double>({}) : 0.0;
+  double tol = (rcond < 0 ? dtype_eps(la_kind(a.dtype()).out) * std::max(m, n) : rcond) * smax;
+  ndarray sinv(Shape{kk}, kFloat64, Order::C);
+  int64_t rank = 0;
+  for (int64_t i = 0; i < kk; ++i) { double s = sd.item<double>({i}); bool ok = s > tol; sinv.set_item<double>({i}, ok ? 1.0 / s : 0.0); rank += ok; }
+  const bool bvec = b.ndim() == 1;
+  ndarray bm = bvec ? b.reshape({b.size(), 1}) : b;
+  ndarray Uh = conj(r.u).transpose();              // kk x m
+  ndarray V = conj(r.vh).transpose();              // n x kk
+  ndarray x = matmul(V, multiply(sinv.reshape({kk, 1}), matmul(Uh, bm.astype(r.u.dtype()))));
+  LstsqResult out;
+  out.solution = bvec ? x.reshape({n}) : x;
+  out.solution = out.solution.astype(la_kind(result_type(a.dtype(), b.dtype())).out);
+  ndarray rk(Shape{}, kInt64, Order::C); rk.set_item<int64_t>({}, rank); out.rank = rk;
+  out.singular_values = r.s;
+  // residuals: only when overdetermined and full column rank
+  if (m > n && rank == n) {
+    ndarray resid = matmul(a.astype(out.solution.dtype()), bvec ? out.solution.reshape({n, 1}) : out.solution);
+    resid = subtract(bm.astype(out.solution.dtype()), resid);
+    out.residuals = sum(square(absolute(resid)), 0);
+  } else {
+    out.residuals = ndarray(Shape{0}, kFloat64, Order::C);
+  }
+  return out;
+}
+
+namespace {
 ndarray norm_vector(const ndarray& a, int which, double p) {
   ndarray av = absolute(a);                       // real magnitudes
   switch (which) {
@@ -449,7 +582,10 @@ ndarray norm_matrix(const ndarray& a, int which) {
     case 2: return amax(sum(av, 1));               // inf
     case -1: return amin(sum(av, 0));
     case -2: return amin(sum(av, 1));
-    default: throw not_implemented_error("matrix norm ord 2/-2/nuc requires svd (next increment)");
+    case 3: return amax(svdvals(a));     // spectral (ord 2)
+    case -3: return amin(svdvals(a));    // ord -2
+    case 4: return sum(svdvals(a));      // nuclear
+    default: throw not_implemented_error("unsupported matrix norm order");
   }
 }
 }  // namespace
@@ -471,11 +607,14 @@ ndarray norm(const ndarray& a, double ord) {
   if (ord == inf) return norm_matrix(a, 2);
   if (ord == -1) return norm_matrix(a, -1);
   if (ord == -inf) return norm_matrix(a, -2);
-  return norm_matrix(a, 99);  // 2/-2 -> not implemented yet
+  if (ord == 2) return norm_matrix(a, 3);
+  if (ord == -2) return norm_matrix(a, -3);
+  return norm_matrix(a, 99);
 }
 ndarray norm(const ndarray& a, const std::string& ord) {
   if (ord == "fro") return norm_matrix(a, 0);
-  throw not_implemented_error("norm ord '" + ord + "' requires svd (next increment)");
+  if (ord == "nuc") return norm_matrix(a, 4);
+  throw not_implemented_error("norm ord '" + ord + "' not supported");
 }
 
 }  // namespace linalg
