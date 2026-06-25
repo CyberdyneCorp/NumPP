@@ -116,8 +116,10 @@ Increment (a): 5 cases (166 total / 910 checks), 0 divergences, clang+gcc+ASan g
 
 ## Examples (post-1.0)
 
-`examples/` — 7 Electrical-Engineering math programs (RLC AC analysis, nodal
+`examples/` — 10 Electrical-Engineering math programs (RLC AC analysis, nodal
 analysis, Fourier spectrum, FIR convolution, state-space stability, least-squares
-fit, three-phase power) + 1 neural network (2->4->1 MLP learning XOR with full
-back-prop). Each self-verifies against live NumPy via `examples/parity.hpp`;
-**all 64 parity assertions pass**. Build with -DNUMPP_BUILD_EXAMPLES=ON.
+fit, three-phase power, Laplace transfer functions, control/Bode, DSP windowing)
++ 1 neural network (2->4->1 MLP learning XOR with full back-prop). Each
+self-verifies against live NumPy via `examples/parity.hpp`; **all 81 parity
+assertions pass**. A `justfile` provides recipes (build/test/examples/gcc/asan/
+spec/ci). Build with -DNUMPP_BUILD_EXAMPLES=ON or `just examples`.
