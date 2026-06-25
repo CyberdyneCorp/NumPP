@@ -14,7 +14,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 5 | fft | add-fft | ✅ merged+archived |
 | 6 | random | add-random | ✅ merged+archived |
 | 7 | I/O (.npy/.npz, printing/repr) | add-io | ✅ merged+archived |
-| 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
+| 8 | sorting/searching/counting, set ops, unique | add-sorting | 🟡 in progress |
 | 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
 | 10 | GPU kernel coverage beyond GEMM | — | ⬜ |
 | 11 | hardening, docs, v1.0 | — | ⬜ |
@@ -86,6 +86,14 @@ Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
 - [x] array printing (str/repr, int/float/bool/complex, 1d/2d/3d, summarization, dtype suffix; fixed-notation only -> #11)
 
 Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 divergences.
+
+## Phase 8 — sorting: sub-tracker (branch phase-8-sorting)
+
+- [x] sort/argsort (axis/flatten, kinds, NaN-last)
+- [ ] searchsorted, partition/argpartition, argmin/argmax, flatnonzero, count_nonzero
+- [ ] unique(+index/inverse/counts), set ops, bincount, histogram
+
+Increment 1: 7 cases (153 total / 776 checks), 0 divergences, clang+gcc+ASan green.
 
 ## Bug log (oracle divergences → GitHub issues)
 

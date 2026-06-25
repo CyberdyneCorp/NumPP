@@ -10,6 +10,7 @@ add_library(numpp
     io/npy.cpp
     io/npz.cpp
     io/format.cpp
+    sorting/sorting.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)

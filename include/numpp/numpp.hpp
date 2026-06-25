@@ -16,4 +16,5 @@
 #include "numpp/io/npy.hpp"
 #include "numpp/io/npz.hpp"
 #include "numpp/io/format.hpp"
+#include "numpp/sorting/sorting.hpp"
 #include "numpp/backend/backend.hpp"
