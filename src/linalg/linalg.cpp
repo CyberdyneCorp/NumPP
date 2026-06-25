@@ -1,5 +1,6 @@
 #include "numpp/linalg/linalg.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <limits>
@@ -140,6 +141,78 @@ ndarray dispatch(DType d, F&& f) {
   return f(double{}, k);
 }
 
+// Householder QR: produces Q (m x qcols) and R (rrows x n), A = Q R.
+template <class T>
+void householder_qr(const std::vector<T>& Ain, int m, int n, bool complete,
+                    std::vector<T>& Q, std::vector<T>& R, int& qcols, int& rrows) {
+  std::vector<T> A = Ain;                       // becomes R
+  std::vector<T> Qf(static_cast<size_t>(m) * m, T(0));
+  for (int i = 0; i < m; ++i) Qf[i * m + i] = T(1);
+  const int k = std::min(m, n);
+  std::vector<T> v(m);
+  for (int j = 0; j < k; ++j) {
+    double xnorm = 0;
+    for (int i = j; i < m; ++i) { double a = std::abs(A[i * n + j]); xnorm += a * a; }
+    xnorm = std::sqrt(xnorm);
+    if (xnorm == 0) continue;
+    T a0 = A[j * n + j];
+    T alpha;
+    if constexpr (std::is_same_v<T, std::complex<double>>) {
+      double r = std::abs(a0); alpha = -(r == 0 ? T(1) : a0 / T(r)) * T(xnorm);
+    } else { alpha = (a0 >= 0 ? -xnorm : xnorm); }
+    for (int i = 0; i < m; ++i) v[i] = T(0);
+    for (int i = j; i < m; ++i) v[i] = A[i * n + j];
+    v[j] -= alpha;
+    double vn = 0; for (int i = j; i < m; ++i) { double a = std::abs(v[i]); vn += a * a; }
+    if (vn == 0) continue;
+    T beta = T(2.0 / vn);
+    for (int col = j; col < n; ++col) {          // R <- H R
+      T d(0); for (int i = j; i < m; ++i) d += conj_(v[i]) * A[i * n + col];
+      d *= beta; for (int i = j; i < m; ++i) A[i * n + col] -= v[i] * d;
+    }
+    for (int row = 0; row < m; ++row) {          // Q <- Q H
+      T d(0); for (int i = j; i < m; ++i) d += Qf[row * m + i] * v[i];
+      d *= beta; for (int i = j; i < m; ++i) Qf[row * m + i] -= d * conj_(v[i]);
+    }
+  }
+  if (complete) { qcols = m; rrows = m; Q = Qf; R = A; }
+  else {
+    qcols = k; rrows = k;
+    Q.assign(static_cast<size_t>(m) * k, T(0));
+    for (int i = 0; i < m; ++i) for (int c = 0; c < k; ++c) Q[i * k + c] = Qf[i * m + c];
+    R.assign(static_cast<size_t>(k) * n, T(0));
+    for (int i = 0; i < k; ++i) for (int c = 0; c < n; ++c) R[i * n + c] = A[i * n + c];
+  }
+}
+
+// Cyclic Jacobi for a real symmetric matrix -> eigenvalues (ascending) + eigenvectors (columns).
+void jacobi_real(std::vector<double> A, int n, std::vector<double>& eval, std::vector<double>& V) {
+  V.assign(static_cast<size_t>(n) * n, 0.0);
+  for (int i = 0; i < n; ++i) V[i * n + i] = 1.0;
+  for (int sweep = 0; sweep < 100; ++sweep) {
+    double off = 0;
+    for (int p = 0; p < n; ++p) for (int q = p + 1; q < n; ++q) off += A[p * n + q] * A[p * n + q];
+    if (off < 1e-30) break;
+    for (int p = 0; p < n; ++p) for (int q = p + 1; q < n; ++q) {
+      double apq = A[p * n + q];
+      if (std::abs(apq) < 1e-300) continue;
+      double theta = (A[q * n + q] - A[p * n + p]) / (2 * apq);
+      double t = (theta >= 0 ? 1.0 : -1.0) / (std::abs(theta) + std::sqrt(theta * theta + 1));
+      double c = 1 / std::sqrt(t * t + 1), s = t * c;
+      for (int i = 0; i < n; ++i) { double a = A[i * n + p], b = A[i * n + q]; A[i * n + p] = c * a - s * b; A[i * n + q] = s * a + c * b; }
+      for (int i = 0; i < n; ++i) { double a = A[p * n + i], b = A[q * n + i]; A[p * n + i] = c * a - s * b; A[q * n + i] = s * a + c * b; }
+      for (int i = 0; i < n; ++i) { double a = V[i * n + p], b = V[i * n + q]; V[i * n + p] = c * a - s * b; V[i * n + q] = s * a + c * b; }
+    }
+  }
+  eval.assign(n, 0.0);
+  std::vector<int> ord(n);
+  for (int i = 0; i < n; ++i) { eval[i] = A[i * n + i]; ord[i] = i; }
+  std::sort(ord.begin(), ord.end(), [&](int x, int y) { return eval[x] < eval[y]; });
+  std::vector<double> es(n); std::vector<double> Vs(static_cast<size_t>(n) * n);
+  for (int c = 0; c < n; ++c) { es[c] = eval[ord[c]]; for (int i = 0; i < n; ++i) Vs[i * n + c] = V[i * n + ord[c]]; }
+  eval.swap(es); V.swap(Vs);
+}
+
 }  // namespace
 
 ndarray dot(const ndarray& a, const ndarray& b) {
@@ -275,6 +348,134 @@ ndarray cholesky(const ndarray& a) {
   return dispatch(a.dtype(), [&](auto tag, Kind k) {
     using T = decltype(tag); return cholesky_impl<T>(a, k);
   });
+}
+
+template <class T>
+QRResult qr_impl(const ndarray& a, bool complete, Kind k) {
+  const int m = static_cast<int>(a.shape()[0]), n = static_cast<int>(a.shape()[1]);
+  std::vector<T> A = to_vec<T>(a, k.compute), Q, R;
+  int qc = 0, rr = 0;
+  householder_qr<T>(A, m, n, complete, Q, R, qc, rr);
+  QRResult out;
+  out.q = from_vec<T>(Q, {static_cast<int64_t>(m), static_cast<int64_t>(qc)}, k.compute, k.out);
+  out.r = from_vec<T>(R, {static_cast<int64_t>(rr), static_cast<int64_t>(n)}, k.compute, k.out);
+  return out;
+}
+QRResult qr(const ndarray& a, const std::string& mode) {
+  if (a.ndim() != 2) throw not_implemented_error("qr requires a 2-D array");
+  if (mode != "reduced" && mode != "complete") throw value_error("qr mode must be 'reduced' or 'complete'");
+  Kind k = la_kind(a.dtype());
+  if (k.cmplx) return qr_impl<std::complex<double>>(a, mode == "complete", k);
+  return qr_impl<double>(a, mode == "complete", k);
+}
+
+namespace {
+// Build the real symmetric problem (real input as-is; complex Hermitian via the
+// 2n x 2n real embedding) and return ascending eigenvalues + (optionally) vectors.
+void hermitian_eig(const ndarray& a, std::vector<double>& eval, ndarray* evec_out, Kind k) {
+  const int n = static_cast<int>(a.shape()[0]);
+  if (!k.cmplx) {
+    std::vector<double> A = to_vec<double>(a, kFloat64), V;
+    jacobi_real(A, n, eval, V);
+    if (evec_out) *evec_out = from_vec<double>(V, {(int64_t)n, (int64_t)n}, kFloat64, k.out);
+    return;
+  }
+  std::vector<std::complex<double>> A = to_vec<std::complex<double>>(a, kComplex128);
+  std::vector<double> M(static_cast<size_t>(2 * n) * 2 * n, 0.0);
+  for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) {
+    double re = A[i * n + j].real(), im = A[i * n + j].imag();
+    M[i * 2 * n + j] = re;            M[i * 2 * n + (n + j)] = -im;
+    M[(n + i) * 2 * n + j] = im;      M[(n + i) * 2 * n + (n + j)] = re;
+  }
+  std::vector<double> e2, V2;
+  jacobi_real(M, 2 * n, e2, V2);
+  eval.resize(n);
+  for (int c = 0; c < n; ++c) eval[c] = e2[2 * c];          // pairs are identical
+  if (evec_out) {
+    std::vector<std::complex<double>> Z(static_cast<size_t>(n) * n);
+    for (int c = 0; c < n; ++c) {
+      double nrm = 0;
+      for (int i = 0; i < n; ++i) { std::complex<double> z(V2[i * 2 * n + 2 * c], V2[(n + i) * 2 * n + 2 * c]); Z[i * n + c] = z; nrm += std::norm(z); }
+      nrm = std::sqrt(nrm);
+      if (nrm > 0) for (int i = 0; i < n; ++i) Z[i * n + c] /= nrm;
+    }
+    *evec_out = from_vec<std::complex<double>>(Z, {(int64_t)n, (int64_t)n}, kComplex128, k.out);
+  }
+}
+ndarray real_evals(const std::vector<double>& eval, DType real_out) {
+  ndarray r(Shape{static_cast<int64_t>(eval.size())}, kFloat64, Order::C);
+  for (size_t i = 0; i < eval.size(); ++i) r.set_item<double>({(int64_t)i}, eval[i]);
+  return r.astype(real_out);
+}
+}  // namespace
+
+ndarray eigvalsh(const ndarray& a) {
+  require_square(a);
+  Kind k = la_kind(a.dtype());
+  std::vector<double> eval;
+  hermitian_eig(a, eval, nullptr, k);
+  DType real_out = (k.out == kComplex64 || k.out == kFloat32) ? kFloat32 : kFloat64;
+  return real_evals(eval, real_out);
+}
+EighResult eigh(const ndarray& a) {
+  require_square(a);
+  Kind k = la_kind(a.dtype());
+  std::vector<double> eval; ndarray evec;
+  hermitian_eig(a, eval, &evec, k);
+  DType real_out = (k.out == kComplex64 || k.out == kFloat32) ? kFloat32 : kFloat64;
+  return {real_evals(eval, real_out), evec};
+}
+
+namespace {
+ndarray norm_vector(const ndarray& a, int which, double p) {
+  ndarray av = absolute(a);                       // real magnitudes
+  switch (which) {
+    case 0: return sqrt(sum(square(av)));          // 2-norm (default)
+    case 1: return sum(av);                        // 1-norm
+    case 2: return amax(av);                       // inf
+    case 3: return amin(av);                       // -inf
+    case 4: return sum(not_equal(a, scalar_like(0.0, a.dtype(), false))).astype(kFloat64);  // 0
+    default: {                                     // general p
+      ndarray s = sum(power(av, scalar_like(p, kFloat64, true)));
+      return power(s, scalar_like(1.0 / p, kFloat64, true));
+    }
+  }
+}
+ndarray norm_matrix(const ndarray& a, int which) {
+  ndarray av = absolute(a);
+  switch (which) {
+    case 0: return sqrt(sum(square(av)));          // fro (default)
+    case 1: return amax(sum(av, 0));               // 1
+    case 2: return amax(sum(av, 1));               // inf
+    case -1: return amin(sum(av, 0));
+    case -2: return amin(sum(av, 1));
+    default: throw not_implemented_error("matrix norm ord 2/-2/nuc requires svd (next increment)");
+  }
+}
+}  // namespace
+
+ndarray norm(const ndarray& a) {
+  return a.ndim() == 1 ? norm_vector(a, 0, 0) : norm_matrix(a, 0);
+}
+ndarray norm(const ndarray& a, double ord) {
+  const double inf = std::numeric_limits<double>::infinity();
+  if (a.ndim() == 1) {
+    if (ord == 1) return norm_vector(a, 1, 0);
+    if (ord == 2) return norm_vector(a, 0, 0);
+    if (ord == inf) return norm_vector(a, 2, 0);
+    if (ord == -inf) return norm_vector(a, 3, 0);
+    if (ord == 0) return norm_vector(a, 4, 0);
+    return norm_vector(a, 99, ord);
+  }
+  if (ord == 1) return norm_matrix(a, 1);
+  if (ord == inf) return norm_matrix(a, 2);
+  if (ord == -1) return norm_matrix(a, -1);
+  if (ord == -inf) return norm_matrix(a, -2);
+  return norm_matrix(a, 99);  // 2/-2 -> not implemented yet
+}
+ndarray norm(const ndarray& a, const std::string& ord) {
+  if (ord == "fro") return norm_matrix(a, 0);
+  throw not_implemented_error("norm ord '" + ord + "' requires svd (next increment)");
 }
 
 }  // namespace linalg

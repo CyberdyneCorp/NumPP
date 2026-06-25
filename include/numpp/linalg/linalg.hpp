@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <utility>
 
 #include "numpp/core/ndarray.hpp"
@@ -18,6 +19,8 @@ NUMPP_API ndarray kron(const ndarray& a, const ndarray& b);
 namespace linalg {
 
 struct SignLogDet { ndarray sign; ndarray logabsdet; };
+struct QRResult { ndarray q; ndarray r; };
+struct EighResult { ndarray eigenvalues; ndarray eigenvectors; };
 
 NUMPP_API ndarray solve(const ndarray& a, const ndarray& b);
 NUMPP_API ndarray inv(const ndarray& a);
@@ -25,6 +28,18 @@ NUMPP_API ndarray det(const ndarray& a);
 NUMPP_API SignLogDet slogdet(const ndarray& a);
 NUMPP_API ndarray matrix_power(const ndarray& a, int64_t n);
 NUMPP_API ndarray cholesky(const ndarray& a);
+
+// mode: "reduced" (default) or "complete".
+NUMPP_API QRResult qr(const ndarray& a, const std::string& mode = "reduced");
+
+// Hermitian/symmetric eigensolver, eigenvalues ascending.
+NUMPP_API EighResult eigh(const ndarray& a);
+NUMPP_API ndarray eigvalsh(const ndarray& a);
+
+// Norms. Default: 2-norm (vector) / Frobenius (matrix). String ords: "fro","nuc".
+NUMPP_API ndarray norm(const ndarray& a);
+NUMPP_API ndarray norm(const ndarray& a, double ord);
+NUMPP_API ndarray norm(const ndarray& a, const std::string& ord);
 
 }  // namespace linalg
 }  // namespace numpp

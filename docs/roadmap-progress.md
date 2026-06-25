@@ -51,7 +51,8 @@ complete to a high parity bar; genuine long-tail tracked in #3.
 - [x] Products: dot, vdot, inner, outer, trace, kron
 - [x] LU core: solve, inv, det, slogdet, matrix_power (real + complex)
 - [x] cholesky (+ not-PD -> linalg_error)
-- [ ] qr (Householder), svd (Jacobi), eigh/eigvalsh (symmetric Jacobi)
+- [x] qr (Householder, reduced/complete), eigh/eigvalsh (Jacobi; complex via 2n embedding), norm (vector + matrix 1/inf/fro)
+- [ ] svd (Jacobi), svdvals
 - [ ] eig/eigvals (general), lstsq, pinv, matrix_rank, norm
 - [ ] LAPACK path behind NUMPP_WITH_LAPACK (weak vtable)
 
