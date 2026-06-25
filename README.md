@@ -87,7 +87,7 @@ Packaging via `vcpkg.json` and `conanfile.py`; `find_package(NumPP)` exports the
 `examples/` contains worked programs covering a typical Electrical-Engineering
 math course plus a neural network — **each one self-verifies against live NumPy**
 at runtime (computes the result in NumPP, recomputes it in NumPy, asserts
-`allclose`, prints `PASS`/`FAIL`). All **64 parity assertions across the 8
+`allclose`, prints `PASS`/`FAIL`). All **81 parity assertions across the 11
 examples pass** against NumPy 2.1.3.
 
 | Example | EE / ML topic | NumPP features |
@@ -99,15 +99,29 @@ examples pass** against NumPy 2.1.3.
 | `ee05_state_space_stability` | State-space eigen-stability | `linalg::eigvals`, `trace`, `det` |
 | `ee06_least_squares_fit` | Least-squares polynomial regression | `linalg::lstsq`, Vandermonde |
 | `ee07_three_phase_power` | Three-phase AC power — phasors, P/Q, power factor | complex arithmetic, `conj` |
+| `ee08_laplace_transfer` | Laplace transfer function — poles/zeros, H(jω) | `linalg::eigvals` (roots), complex Horner |
+| `ee09_control_bode` | Control systems — Bode magnitude/phase of a 2nd-order system | `log10`, `angle`, logspace |
+| `ee10_windowing` | DSP windows (Hann/Hamming/Blackman) & windowed spectra | `cos`, `fft::fft` |
 | `nn01_mlp_xor` | **Neural net** — a 2→4→1 MLP learning XOR with full back-prop | `matmul`, `exp`, broadcasting |
 
 The neural net is implemented end-to-end in NumPP (sigmoid via `1/(1+exp(-x))`,
 full-batch gradient descent) and its trained predictions match an identical NumPy
 training loop bit-for-bit, converging to XOR (`[0.04, 0.96, 0.96, 0.03]`).
 
+## Developer tasks (`just`)
+
+A [`justfile`](justfile) provides one-word recipes (`just --list`):
+
 ```bash
-cmake -S . -B build -DNUMPP_BUILD_EXAMPLES=ON && cmake --build build
-./build/examples/numpp_nn01_mlp_xor        # or any numpp_ee0*
+just build         # configure + compile library, tests, examples
+just test          # run the test suite (unit + integration vs live NumPy)
+just examples      # build + run every example, summarizing NumPy parity
+just example nn01_mlp_xor   # run one example
+just gcc           # build + test with GCC
+just asan          # build + test under ASan/UBSan
+just spec          # openspec validate --all --strict
+just ci            # full local CI (clang + gcc + asan + spec + examples)
+just clean
 ```
 
 ## Known limitations (tracked as GitHub issues)
