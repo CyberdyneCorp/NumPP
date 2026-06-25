@@ -4,6 +4,7 @@ add_library(numpp
     core/ndarray.cpp
     core/creation.cpp
     manip/manip.cpp
+    stats/stats.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
     fft/fft.cpp
