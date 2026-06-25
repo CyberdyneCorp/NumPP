@@ -9,4 +9,5 @@
 #include "numpp/core/shape.hpp"
 #include "numpp/core/ndarray.hpp"
 #include "numpp/core/creation.hpp"
+#include "numpp/umath/ufunc.hpp"
 #include "numpp/backend/backend.hpp"

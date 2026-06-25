@@ -3,6 +3,7 @@ add_library(numpp
     core/shape.cpp
     core/ndarray.cpp
     core/creation.cpp
+    umath/ufunc.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
