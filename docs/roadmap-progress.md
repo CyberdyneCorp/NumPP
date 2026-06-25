@@ -123,3 +123,15 @@ fit, three-phase power, Laplace transfer functions, control/Bode, DSP windowing)
 self-verifies against live NumPy via `examples/parity.hpp`; **all 81 parity
 assertions pass**. A `justfile` provides recipes (build/test/examples/gcc/asan/
 spec/ci). Build with -DNUMPP_BUILD_EXAMPLES=ON or `just examples`.
+
+## What's next — NumPy parity backlog
+
+v1.0.0 covers the core surface. Remaining NumPy gaps are catalogued in
+[`docs/numpy-parity-gaps.md`](numpy-parity-gaps.md) and tracked as the active
+OpenSpec change `numpy-parity-roadmap` (kept open as the living backlog). Top
+Tier-1 items: array manipulation (concatenate/stack/split/tile/flip/roll/pad),
+statistics (cumsum/diff/gradient/median/percentile/cov/corrcoef + nan variants),
+grids/indexing (meshgrid/diag/tri*/vander, take/put/diagonal/argwhere/fancy+bool),
+ufunc extras (round/gcd/lcm/sinc/nan_to_num/logaddexp/...), and signal/poly
+(convolve/correlate/interp, polyfit/polyval/roots). Tier 2: einsum, full random
+distributions, the polynomial package, text I/O, char ops.
