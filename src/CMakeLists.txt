@@ -8,6 +8,7 @@ add_library(numpp
     grids/grids.cpp
     indexing/indexing.cpp
     mathx/mathx.cpp
+    poly/poly.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
     fft/fft.cpp
