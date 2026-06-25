@@ -14,7 +14,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 5 | fft | add-fft | ✅ merged+archived |
 | 6 | random | add-random | ✅ merged+archived |
 | 7 | I/O (.npy/.npz, printing/repr) | add-io | ✅ merged+archived |
-| 8 | sorting/searching/counting, set ops, unique | add-sorting | 🟡 in progress |
+| 8 | sorting/searching/counting, set ops, unique | add-sorting | ✅ merged+archived |
 | 9 | structured/record dtypes, datetime64, strings | — | ⬜ |
 | 10 | GPU kernel coverage beyond GEMM | — | ⬜ |
 | 11 | hardening, docs, v1.0 | — | ⬜ |
@@ -91,7 +91,7 @@ Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 d
 
 - [x] sort/argsort (axis/flatten, kinds, NaN-last)
 - [x] searchsorted, partition/argpartition, argmin/argmax (axis+NaN), flatnonzero, count_nonzero
-- [ ] unique(+index/inverse/counts), set ops, bincount, histogram
+- [x] unique(+index/inverse/counts), set ops, bincount, histogram
 
 Increment 1: 7 cases (153 total / 776 checks), 0 divergences, clang+gcc+ASan green.
 

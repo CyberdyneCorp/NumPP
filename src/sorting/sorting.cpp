@@ -1,5 +1,7 @@
 #include "numpp/sorting/sorting.hpp"
 
+#include "numpp/core/creation.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -260,6 +262,166 @@ ndarray count_nonzero(const ndarray& a, std::optional<int64_t> axis) {
   int64_t* o = out.size() ? out.typed_data<int64_t>() : nullptr;
   for (int64_t r = 0; r < outer; ++r) { int64_t cnt = 0; for (int64_t j = 0; j < L; ++j) if (is_nonzero(moved, r * L + j)) ++cnt; o[r] = cnt; }
   return out;
+}
+
+namespace {
+template <class T> bool eq_nan(const T& x, const T& y) { return !less_nan<T>(x, y) && !less_nan<T>(y, x); }
+
+// Concatenate two 1-D arrays of the same dtype.
+ndarray cat1d(const ndarray& x, const ndarray& y) {
+  ndarray out(Shape{x.size() + y.size()}, x.dtype(), Order::C);
+  std::memcpy(out.bytes(), x.ascontiguousarray().bytes(), static_cast<size_t>(x.nbytes()));
+  std::memcpy(out.bytes() + x.nbytes(), y.ascontiguousarray().bytes(), static_cast<size_t>(y.nbytes()));
+  return out;
+}
+}  // namespace
+
+UniqueResult unique_ex(const ndarray& a, bool ri, bool rinv, bool rc) {
+  const DType sd = sort_dtype(a.dtype());
+  ndarray flat = a.astype(sd).ravel().copy();
+  const int64_t n = flat.size();
+  ndarray perm = argsort(flat, std::nullopt, SortKind::Stable);
+  UniqueResult res;
+  visit_dtype(sd.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_same_v<T, half>) { (void)flat; }
+    else {
+      const T* f = n ? flat.typed_data<T>() : nullptr;
+      const int64_t* pm = n ? perm.typed_data<int64_t>() : nullptr;
+      std::vector<int64_t> upos;
+      for (int64_t i = 0; i < n; ++i) if (i == 0 || !eq_nan<T>(f[pm[i]], f[pm[i - 1]])) upos.push_back(i);
+      const int64_t k = static_cast<int64_t>(upos.size());
+      ndarray vals(Shape{k}, sd, Order::C);
+      T* vp = k ? vals.typed_data<T>() : nullptr;
+      for (int64_t j = 0; j < k; ++j) vp[j] = f[pm[upos[j]]];
+      res.values = vals.astype(a.dtype());
+      if (ri) { res.index = ndarray(Shape{k}, kInt64, Order::C); for (int64_t j = 0; j < k; ++j) res.index.set_item<int64_t>({j}, pm[upos[j]]); }
+      if (rc) { res.counts = ndarray(Shape{k}, kInt64, Order::C); for (int64_t j = 0; j < k; ++j) res.counts.set_item<int64_t>({j}, (j + 1 < k ? upos[j + 1] : n) - upos[j]); }
+      if (rinv) {
+        res.inverse = ndarray(Shape{n}, kInt64, Order::C);
+        int64_t u = -1; size_t up = 0;
+        for (int64_t i = 0; i < n; ++i) { if (up < upos.size() && upos[up] == i) { ++u; ++up; } res.inverse.set_item<int64_t>({pm[i]}, u); }
+      }
+    }
+  });
+  return res;
+}
+ndarray unique(const ndarray& a) { return unique_ex(a, false, false, false).values; }
+
+ndarray in1d(const ndarray& a, const ndarray& b) {
+  const DType ct = sort_dtype(result_type(a.dtype(), b.dtype()));
+  ndarray aa = a.astype(ct).ravel().copy();
+  ndarray bb = b.astype(ct).ravel().copy();
+  ndarray out(Shape{aa.size()}, kBool, Order::C);
+  visit_dtype(ct.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_same_v<T, half>) { (void)out; }
+    else {
+      T* bp = bb.size() ? bb.typed_data<T>() : nullptr;
+      auto c = [](const T& x, const T& y) { return less_nan<T>(x, y); };
+      std::sort(bp, bp + bb.size(), c);
+      const T* ap = aa.size() ? aa.typed_data<T>() : nullptr;
+      bool* o = aa.size() ? out.typed_data<bool>() : nullptr;
+      for (int64_t i = 0; i < aa.size(); ++i) o[i] = std::binary_search(bp, bp + bb.size(), ap[i], c);
+    }
+  });
+  return out;
+}
+ndarray isin(const ndarray& a, const ndarray& b) { return in1d(a, b).reshape(a.shape()); }
+
+ndarray intersect1d(const ndarray& a, const ndarray& b) {
+  const DType ct = sort_dtype(result_type(a.dtype(), b.dtype()));
+  ndarray ua = unique(a).astype(ct), ub = unique(b).astype(ct);
+  ndarray out;
+  visit_dtype(ct.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_same_v<T, half>) {}
+    else {
+      const T* pa = ua.size() ? ua.typed_data<T>() : nullptr;
+      const T* pb = ub.size() ? ub.typed_data<T>() : nullptr;
+      std::vector<T> common;
+      int64_t i = 0, j = 0;
+      while (i < ua.size() && j < ub.size()) {
+        if (less_nan<T>(pa[i], pb[j])) ++i;
+        else if (less_nan<T>(pb[j], pa[i])) ++j;
+        else { common.push_back(pa[i]); ++i; ++j; }
+      }
+      out = ndarray(Shape{(int64_t)common.size()}, ct, Order::C);
+      T* op = common.empty() ? nullptr : out.typed_data<T>();
+      for (size_t t = 0; t < common.size(); ++t) op[t] = common[t];
+    }
+  });
+  return out.astype(result_type(a.dtype(), b.dtype()));
+}
+ndarray union1d(const ndarray& a, const ndarray& b) {
+  const DType ct = sort_dtype(result_type(a.dtype(), b.dtype()));
+  return unique(cat1d(a.astype(ct).ravel().copy(), b.astype(ct).ravel().copy())).astype(result_type(a.dtype(), b.dtype()));
+}
+ndarray setdiff1d(const ndarray& a, const ndarray& b) {
+  const DType ct = sort_dtype(result_type(a.dtype(), b.dtype()));
+  ndarray ua = unique(a).astype(ct), ub = unique(b).astype(ct);
+  ndarray out;
+  visit_dtype(ct.id(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_same_v<T, half>) {}
+    else {
+      const T* pa = ua.size() ? ua.typed_data<T>() : nullptr;
+      const T* pb = ub.size() ? ub.typed_data<T>() : nullptr;
+      auto c = [](const T& x, const T& y) { return less_nan<T>(x, y); };
+      std::vector<T> diff;
+      for (int64_t i = 0; i < ua.size(); ++i) if (!std::binary_search(pb, pb + ub.size(), pa[i], c)) diff.push_back(pa[i]);
+      out = ndarray(Shape{(int64_t)diff.size()}, ct, Order::C);
+      T* op = diff.empty() ? nullptr : out.typed_data<T>();
+      for (size_t t = 0; t < diff.size(); ++t) op[t] = diff[t];
+    }
+  });
+  return out.astype(result_type(a.dtype(), b.dtype()));
+}
+
+ndarray bincount(const ndarray& x, const ndarray* weights, int64_t minlength) {
+  ndarray xi = x.astype(kInt64).ravel().copy();
+  const int64_t n = xi.size();
+  const int64_t* p = n ? xi.typed_data<int64_t>() : nullptr;
+  int64_t mx = -1;
+  for (int64_t i = 0; i < n; ++i) { if (p[i] < 0) throw value_error("bincount: negative value"); mx = std::max(mx, p[i]); }
+  const int64_t len = std::max(mx + 1, minlength);
+  if (weights) {
+    ndarray w = weights->astype(kFloat64).ravel().copy();
+    ndarray out = zeros({len}, kFloat64);
+    double* o = len ? out.typed_data<double>() : nullptr;
+    const double* wp = n ? w.typed_data<double>() : nullptr;
+    for (int64_t i = 0; i < n; ++i) o[p[i]] += wp[i];
+    return out;
+  }
+  ndarray out = zeros({len}, kInt64);
+  int64_t* o = len ? out.typed_data<int64_t>() : nullptr;
+  for (int64_t i = 0; i < n; ++i) ++o[p[i]];
+  return out;
+}
+
+Histogram histogram(const ndarray& a, int64_t bins, std::optional<std::pair<double, double>> range) {
+  ndarray flat = a.astype(kFloat64).ravel().copy();
+  const int64_t n = flat.size();
+  const double* p = n ? flat.typed_data<double>() : nullptr;
+  double lo, hi;
+  if (range) { lo = range->first; hi = range->second; }
+  else if (n == 0) { lo = 0; hi = 1; }
+  else { lo = hi = p[0]; for (int64_t i = 1; i < n; ++i) { lo = std::min(lo, p[i]); hi = std::max(hi, p[i]); } }
+  if (lo == hi) { lo -= 0.5; hi += 0.5; }
+  ndarray edges = linspace(lo, hi, bins + 1);
+  ndarray counts = zeros({bins}, kInt64);
+  int64_t* c = bins ? counts.typed_data<int64_t>() : nullptr;
+  const double norm = static_cast<double>(bins) / (hi - lo);
+  for (int64_t i = 0; i < n; ++i) {
+    double v = p[i];
+    if (v < lo || v > hi) continue;
+    int64_t b = v == hi ? bins - 1 : static_cast<int64_t>((v - lo) * norm);
+    if (b >= 0 && b < bins) ++c[b];
+  }
+  return {counts, edges};
+}
+ndarray histogram_bin_edges(const ndarray& a, int64_t bins, std::optional<std::pair<double, double>> range) {
+  return histogram(a, bins, range).bin_edges;
 }
 
 }  // namespace numpp
