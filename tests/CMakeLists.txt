@@ -6,6 +6,7 @@ add_executable(numpp_tests
     test_grids.cpp
     test_indexing.cpp
     test_mathx.cpp
+    test_poly.cpp
     test_ndarray.cpp
     test_creation.cpp
     test_backend.cpp
