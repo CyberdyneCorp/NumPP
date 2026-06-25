@@ -11,7 +11,7 @@ Durable tracker (survives context resets). Update after every increment.
 | 0–2 | Foundation, ndarray, dtypes | bootstrap-numpp-foundation | ✅ merged+archived |
 | 3 | ufuncs & element-wise math | add-ufuncs-elementwise | ✅ merged+archived |
 | 4 | linalg (solve/inv/det/svd/qr/eig/cholesky/lstsq/norms) | add-linalg | ✅ merged+archived |
-| 5 | fft | — | ⬜ |
+| 5 | fft | add-fft | 🟡 in progress |
 | 6 | random | — | ⬜ |
 | 7 | I/O (.npy/.npz, printing/repr) | — | ⬜ |
 | 8 | sorting/searching/counting, set ops, unique | — | ⬜ |
@@ -58,6 +58,16 @@ complete to a high parity bar; genuine long-tail tracked in #3.
 
 Increment 1: 8 linalg test cases (67 total / 439 checks), 0 divergences,
 clang+gcc+ASan green. Compute in double/complex<double>, output dtype per numpy.
+
+## Phase 5 — fft: sub-tracker (branch phase-5-fft)
+
+- [x] DFT engine: radix-2 Cooley-Tukey + Bluestein (arbitrary/prime n)
+- [x] fft/ifft (axis, n pad/truncate, norm backward/ortho/forward); complex64/128 out
+- [ ] rfft/irfft, hfft/ihfft
+- [ ] fftfreq/rfftfreq/fftshift/ifftshift
+- [ ] fft2/ifft2/rfft2/irfft2, fftn/ifftn/rfftn/irfftn
+
+Increment 1: 7 fft cases (95 total / 506 checks), 0 divergences, clang+gcc+ASan green.
 
 ## Bug log (oracle divergences → GitHub issues)
 

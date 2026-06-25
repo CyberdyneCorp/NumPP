@@ -5,6 +5,7 @@ add_library(numpp
     core/creation.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
+    fft/fft.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)

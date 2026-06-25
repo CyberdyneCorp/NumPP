@@ -11,4 +11,5 @@
 #include "numpp/core/creation.hpp"
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/linalg/linalg.hpp"
+#include "numpp/fft/fft.hpp"
 #include "numpp/backend/backend.hpp"
