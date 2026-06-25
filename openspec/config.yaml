@@ -1,0 +1,36 @@
+schema: spec-driven
+
+context: |
+  NumPP — a modern C++20 clean-room port of NumPy (https://github.com/numpy/numpy).
+  Sibling project to SymPP (the C++ port of SymPy); follow SymPP's conventions:
+  - Language/std: C++20, compiled primarily with clang (also GCC). No Python C-API.
+  - Build: CMake (>= 3.25), packaging via vcpkg + Conan. Feature flags gate optional backends.
+  - Validation: NumPy (Python) is wired in as a numerical *oracle* at test time —
+    NumPP results are compared with numpy.allclose against the real NumPy.
+  - Layout: public headers under include/numpp/<module>/, sources under src/<module>/,
+    tests under tests/, one umbrella header include/numpp/numpp.hpp.
+
+  Differentiator vs NumPy: tiered, runtime acceleration dispatch.
+  - A portable, dependency-free C++ CPU kernel is ALWAYS present and is the only
+    thing required to build. This is what lets NumPP compile on iOS / Android where
+    there may be no BLAS/LAPACK and no usable GPU.
+  - BLAS/LAPACK (Accelerate, OpenBLAS, MKL, ...) and GPU backends (Metal, Vulkan,
+    CUDA, OpenCL) are OPTIONAL, weak-linked, compile-time-gated, and selected at
+    runtime based on device availability and operation size thresholds, always
+    falling back to the portable CPU kernel.
+
+  Reuse policy: do not reinvent the wheel. Prefer adapting proven code from
+  NumPy (numpy/_core/src/common, npysort, npymath/half, simd) and from the
+  matlab_llvm runtime (/home/leonardo/work/matlab_llvm/runtime — descriptors,
+  RAII MatPtr, shape_op template, BLAS dispatch, weak-symbol GPU tiering), but
+  only after testing it. Anything coupled to the Python C-API is rewritten.
+
+rules:
+  proposal:
+    - Always include a "Non-goals" section.
+    - State which existing code (NumPy / matlab_llvm / SymPP) is being reused vs rewritten.
+  design:
+    - Document the mobile (iOS/Android, no-accel) build path explicitly for any new capability.
+  tasks:
+    - Every capability must include NumPy-oracle validation tasks.
+    - Every numeric kernel must have a portable CPU implementation before any accelerated one.

@@ -1,0 +1,11 @@
+#pragma once
+// Generated from config.hpp.in by CMake. Backend feature flags.
+// All backends are optional; a build with every flag 0 is the portable
+// CPU-only baseline that compiles on iOS/Android with no external numeric deps.
+
+#cmakedefine01 NUMPP_WITH_BLAS
+#cmakedefine01 NUMPP_WITH_LAPACK
+#cmakedefine01 NUMPP_WITH_METAL
+#cmakedefine01 NUMPP_WITH_VULKAN
+#cmakedefine01 NUMPP_WITH_CUDA
+#cmakedefine01 NUMPP_WITH_OPENCL

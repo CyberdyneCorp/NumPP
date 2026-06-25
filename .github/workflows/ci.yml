@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push: { branches: [ main ] }
+  pull_request:
+
+jobs:
+  desktop:
+    name: ${{ matrix.os }} / ${{ matrix.cxx }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+        cxx: [ clang++, g++ ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.x' }
+      - run: pip install numpy            # NumPy oracle for the test suite
+      - run: cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.x' }
+      - run: pip install numpy
+      - run: cmake -S . -B build -DNUMPP_ENABLE_ASAN=ON -DNUMPP_ENABLE_UBSAN=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
+
+  # Portability guard: the core must build with ALL backend flags OFF on the
+  # mobile cross-compilation toolchains (no BLAS/LAPACK/GPU).
+  mobile-no-accel:
+    runs-on: ${{ matrix.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: android, host: ubuntu-latest }
+          - { name: ios,     host: macos-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Android (NDK, CPU-only)
+        if: matrix.name == 'android'
+        run: |
+          cmake -S . -B build-android \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 \
+            -DNUMPP_BUILD_TESTS=OFF
+      - name: Configure iOS (CPU-only)
+        if: matrix.name == 'ios'
+        run: |
+          cmake -S . -B build-ios -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DNUMPP_BUILD_TESTS=OFF
+      - name: Build core (Android)
+        if: matrix.name == 'android'
+        run: cmake --build build-android
+      - name: Build core (iOS)
+        if: matrix.name == 'ios'
+        run: cmake --build build-ios
+
+  openspec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install -g @fission-ai/openspec@latest
+      - run: openspec validate --all --strict
