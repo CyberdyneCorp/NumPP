@@ -82,7 +82,7 @@ Increment 1: 5 cases (111 total / 553 checks), bit-exact vs numpy.random.PCG64,
 ## Phase 7 — I/O: sub-tracker (branch phase-7-io)
 
 - [x] NPY save/load (all dtypes, C/F order, v1.0 write/v1.0+v2.0 read); oracle uses numpp::load now
-- [ ] NPZ savez/savez_compressed/load
+- [x] NPZ savez/savez_compressed/load (minimal ZIP STORED+CRC32; numpy-interop both ways)
 - [ ] array printing (str/repr, summarization, dtype suffix)
 
 Increment 1: 4 io cases (136 total / 728 checks), round-trips numpp<->numpy, 0 divergences.
