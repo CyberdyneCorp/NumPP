@@ -15,6 +15,7 @@
 #include "numpp/indexing/indexing.hpp"
 #include "numpp/mathx/mathx.hpp"
 #include "numpp/poly/poly.hpp"
+#include "numpp/polynomial/polynomial.hpp"
 #include "numpp/tensor/tensor.hpp"
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/linalg/linalg.hpp"

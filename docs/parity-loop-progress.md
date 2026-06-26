@@ -16,8 +16,8 @@ PR/merge/archive. Durable tracker (survives context resets).
 | 7 | sorting-extras (lexsort/sort_complex/searchsorted-sorter) | 1 | ✅ merged+archived |
 | 8 | einsum (+tensordot/cross/cond/multi_dot) | 2 | ✅ merged+archived |
 | 9 | random-distributions (laplace/logistic/gumbel/rayleigh/weibull/pareto/power/cauchy/triangular/lognormal) | 2 | ✅ merged+archived |
-| 10 | polynomial-package (Polynomial/Chebyshev/...) | 2 | 🟡 next |
-| 11 | text-io (savetxt/loadtxt/genfromtxt/print-options) | 2 | ⬜ |
+| 10 | polynomial-package (polyval/fit/roots + cheb/leg/herm/herme/lag val + Polynomial class) | 2 | ✅ merged+archived |
+| 11 | text-io (savetxt/loadtxt/genfromtxt/print-options) | 2 | 🟡 next |
 | 12 | char-strings (numpy.char) | 2 | ⬜ |
 
 ## Bug log (oracle divergences → issues)

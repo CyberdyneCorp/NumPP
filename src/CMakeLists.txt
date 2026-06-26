@@ -9,6 +9,7 @@ add_library(numpp
     indexing/indexing.cpp
     mathx/mathx.cpp
     poly/poly.cpp
+    polynomial/polynomial.cpp
     tensor/tensor.cpp
     umath/ufunc.cpp
     linalg/linalg.cpp
