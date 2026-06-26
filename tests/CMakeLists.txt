@@ -8,6 +8,7 @@ add_executable(numpp_tests
     test_mathx.cpp
     test_poly.cpp
     test_tensor.cpp
+    test_distributions.cpp
     test_sorting_extra.cpp
     test_ndarray.cpp
     test_creation.cpp
