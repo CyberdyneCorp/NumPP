@@ -45,5 +45,5 @@
 - [x] add-object-records-testing: numpy.testing (array_equal/array_equiv/assert_*) ✅; structured field access already existed; **dtype=object arrays deferred** (type-erased storage)
 - [x] add-datetime-completion: is_busday/busday_count/busday_offset, datetime_as_string ✅; full unit conversion & structured-dtype .npy (#14) deferred
 - [x] add-gpu-backends: **real OpenCL + CUDA backends incl. GPU GEMM/matmul, a device buffer pool and a tiled shared-memory GEMM** (validated on NVIDIA RTX 5060 / sm_120; ~5-8x over CPU on fp64 matmul, 109 GFLOP/s @ 1024³; CUDA uses PTX-virtual arch so nvcc 12.0 JITs to sm_120). Deferred: Metal/Vulkan, true device-resident ndarrays, pinned/unified memory, cuBLAS/clBLAST path
-- [ ] add-bitexact-longtail: #7 choice(replace=False), #8 ziggurat, #9 MT19937 — **deferred: deep numpy-internal bit-exact reverse-engineering (same hard class as Philox #36)**
+- [~] add-bitexact-longtail: **Philox (#36) and MT19937 (#9) now bit-exact** (numpy's M0=0xD2E7470EE14C6C93 + increment-before-generate; MT seeding via generate_state(624)/mt[0]=0x80000000/pos=623). Remaining: #7 choice(replace=False), #8 ziggurat normal/exp
 - [ ] add-interop-misc: memmap, DEFLATE savez_compressed, DLPack/array-API, ctypeslib, FFTW — **deferred: external deps / conflict with no-dependency portability goal**
