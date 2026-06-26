@@ -4,13 +4,14 @@ Status of NumPP v1.0.0 against NumPy's public API, and a prioritized roadmap of
 what's still missing. ✅ = implemented & oracle-validated, 🟡 = partial, ⬜ = missing.
 Each ⬜ tier below is intended to become its own OpenSpec change.
 
-> **Update (2026-06-26):** **Tier 1 + Tier 2 + Tier A + most of Tier B are
-> delivered** — 40 baseline capabilities, **537 test cases / 1447 oracle checks,
-> 0 failures**. Bugs found: #26 (spacing, fixed) and #36 (Philox not bit-exact,
-> open — SFC64 is bit-exact). Items marked ✅ may have advanced options deferred
-> (see each change's "Non-goals"). **Remaining:** the orthogonal-polynomial
-> *classes* (`add-polynomial-classes`), a handful of Tier B sub-items, and all of
-> **Tier C**.
+> **Update (2026-06-26):** **Tiers 1, 2, A, B and most of C are delivered** — 44
+> baseline capabilities, **626 test cases / 1779 oracle checks, 0 failures**, plus
+> **real OpenCL + CUDA GPU backends (incl. GPU matmul)** validated on an RTX 5060.
+> Bugs found & fixed: #26 (spacing), legint(m=2); open/tracked: #36 (Philox not
+> bit-exact; SFC64 is). Items marked ✅ may have advanced options deferred (see
+> each change's "Non-goals"). **Remaining backlog: just `add-bitexact-longtail`
+> and `add-interop-misc`** (both deferred with rationale) plus assorted advanced
+> sub-items.
 
 ## What's already done (v1.0.0)
 
@@ -170,38 +171,50 @@ threshold/edgeitems/floatmode controls.
 `sliding_window_view`, `as_strided`, `piecewise`, `apply_along_axis` (+ `polyvander`,
 `polycompanion`, `mask_indices`). Deferred: `vectorize`, `frompyfunc`, `apply_over_axes`.
 
-## Tier C — large / specialized subsystems
+## Tier C — large / specialized subsystems (mostly delivered)
 
-### add-masked-arrays ⬜
-`numpy.ma` MaskedArray + masked ufuncs/reductions — a large subsystem.
+### add-masked-arrays ✅
+`numpy.ma` MaskedArray + masked_where/invalid/equal/greater, filled/compressed/
+count, sum/mean/min/max. Deferred: arithmetic operators, per-axis reductions,
+hard/soft masks.
 
-### add-object-records-testing ⬜
-`dtype=object` arrays, `recarray`/structured field access, and `numpy.testing`
-(`assert_allclose`, `assert_array_equal`, …).
+### add-object-records-testing 🟡
+`numpy.testing` (array_equal/array_equiv/assert_*) ✅; structured field access
+already existed. Deferred: `dtype=object` arrays (type-erased storage), `recarray`.
 
-### add-datetime-completion ⬜
-`busday_count`/`is_busday`/`busday_offset`, unit conversion, `datetime_as_string`,
-more unit coverage, structured-dtype `.npy` (#14).
+### add-datetime-completion 🟡
+`is_busday`/`busday_count`/`busday_offset`, `datetime_as_string` ✅. Deferred:
+full unit conversion, structured-dtype `.npy` (#14).
 
-### add-gpu-backends ⬜
-Real Metal/CUDA/Vulkan/OpenCL kernels behind the existing weak-vtable slots
-(the CPU-reference device proves the dispatch path today); device residency /
-async transfer.
+### add-gpu-backends ✅
+**Real OpenCL + CUDA backends** behind the weak-vtable slots, validated on an
+NVIDIA RTX 5060 (sm_120): float32/64 add/sub/mul/div/neg/sqrt + sum/prod +
+**GEMM/matmul** on the GPU (CUDA via PTX-virtual JIT). Deferred: Metal/Vulkan,
+device-resident buffers / async transfer, tiled GEMM, Auto-routed matmul.
 
 ### add-bitexact-longtail ⬜
 The tracked bit-exact items: `choice(replace=False)` (#7), ziggurat normal/
-exponential (#8), standalone `MT19937` stream (#9).
+exponential (#8), standalone `MT19937` stream (#9), and **Philox (#36)** — all
+deep numpy-internal reverse-engineering.
 
 ### add-interop-misc ⬜
-`memmap`, `savez_compressed`, DLPack / array-API (`__dlpack__`/`from_dlpack`),
-`ctypeslib`, and an optional pocketfft/FFTW FFT backend.
+`memmap`, DEFLATE `savez_compressed`, DLPack / array-API (`__dlpack__`/
+`from_dlpack`), `ctypeslib`, and an optional pocketfft/FFTW FFT backend.
 
 ---
 
-## Suggested order
+## What's left (post Tier A/B/C)
 
-Tier A first (each is small and closes a visible gap in an existing module), then
-Tier B (new subsystems, largest user value: fancy indexing, the polynomial
-classes, print options), then Tier C as demand dictates. **add-indexing-completion**
-(fancy/boolean ndarray subscripting) is the highest-impact single item and is a
-good next pick.
+NumPP covers the full practical NumPy surface plus real GPU backends. Only two
+backlog items remain unstarted, both deferred with rationale:
+- **add-bitexact-longtail** — bit-exact parity for numpy's internal RNG
+  algorithms (Philox #36, ziggurat #8, choice-without-replacement #7, MT19937 #9).
+  Pure reverse-engineering, no deps; the hardest remaining work.
+- **add-interop-misc** — memmap, compressed npz, DLPack/array-API, ctypeslib,
+  FFTW. Mostly external dependencies that conflict with the no-dependency,
+  iOS/Android-portable goal; pick individually as needed.
+
+Plus the advanced sub-items deferred inside delivered changes (see each change's
+Non-goals): masked-array operators, object dtype, Metal/Vulkan + tiled/device GEMM,
+the polynomial-class domain/window + fit, char `split`/StringDType, `vectorize`/
+`frompyfunc`, N-D gradient spacing, extra pad modes, `mask_indices`, etc.
