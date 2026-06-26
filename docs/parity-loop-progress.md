@@ -17,8 +17,8 @@ PR/merge/archive. Durable tracker (survives context resets).
 | 8 | einsum (+tensordot/cross/cond/multi_dot) | 2 | ✅ merged+archived |
 | 9 | random-distributions (laplace/logistic/gumbel/rayleigh/weibull/pareto/power/cauchy/triangular/lognormal) | 2 | ✅ merged+archived |
 | 10 | polynomial-package (polyval/fit/roots + cheb/leg/herm/herme/lag val + Polynomial class) | 2 | ✅ merged+archived |
-| 11 | text-io (savetxt/loadtxt/genfromtxt/print-options) | 2 | 🟡 next |
-| 12 | char-strings (numpy.char) | 2 | ⬜ |
+| 11 | text-io (savetxt/loadtxt/genfromtxt/fromstring/tofile/fromfile/binary_repr/base_repr) | 2 | ✅ merged+archived |
+| 12 | char-strings (numpy.char) | 2 | 🟡 next |
 
 ## Bug log (oracle divergences → issues)
 | # | issue | capability | regression test | status |

@@ -9,6 +9,7 @@ add_executable(numpp_tests
     test_poly.cpp
     test_tensor.cpp
     test_polynomial.cpp
+    test_textio.cpp
     test_distributions.cpp
     test_sorting_extra.cpp
     test_ndarray.cpp
