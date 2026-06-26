@@ -1,24 +1,43 @@
-# Backlog — NumPy parity (each becomes its own OpenSpec change when started)
+# Backlog — NumPy parity (each unchecked item becomes its own OpenSpec change)
 
-## Tier 1
-- [x] add-array-manipulation: concatenate/stack/{h,v,d}stack/column_stack, split/array_split/{h,v}split, tile, repeat, flip/fliplr/flipud, roll, rot90, moveaxis/rollaxis, atleast_{1,2,3}d, append/insert/delete, pad, resize
-- [x] add-statistics: cumsum/cumprod/nancumsum/nancumprod, diff/ediff1d/gradient/ptp, median/percentile/quantile/average, cov/corrcoef, digitize, nanmedian/nanpercentile, nanargmin/nanargmax, histogram2d/histogramdd
-- [x] add-creation-grids: array/asarray (nested), meshgrid, indices, diag/diagflat, tri/tril/triu, vander, logspace, geomspace, fromfunction
-- [x] add-advanced-indexing: take/put, take_along_axis/put_along_axis, diagonal, argwhere, select, compress, choose, ravel_multi_index/unravel_index, ix_, fancy + boolean indexing
-- [x] add-ufuncs-extras: round/around, fix, gcd, lcm, sinc, degrees/radians, nan_to_num, logaddexp/logaddexp2, float_power, fmod, heaviside, modf, frexp, ldexp, divmod, unwrap, i0
-- [x] add-signal-poly: convolve, correlate, interp; polyval/polyfit/roots/poly/polyder/polyint/poly1d
-- [x] add-sorting-extras: lexsort, sort_complex, searchsorted(sorter=), array-kth partition
+## Delivered — Tier 1 (all merged + archived)
+- [x] add-array-manipulation: concatenate/stack/{h,v,d}stack/column_stack, split/array_split/{h,v}split, tile, repeat, flip/fliplr/flipud, roll, rot90, moveaxis, atleast_{1,2,3}d, append/insert/delete, pad (constant/edge), resize
+- [x] add-statistics: cumsum/cumprod/nancumsum/nancumprod, diff/ediff1d/gradient/ptp, median/percentile/quantile/average, cov/corrcoef, digitize, nanmedian/nanpercentile, nanargmin/nanargmax
+- [x] add-creation-grids: meshgrid, indices, diag/diagflat, tri/tril/triu, vander, logspace, geomspace, fromfunction
+- [x] add-advanced-indexing: take/take_along_axis/put, diagonal, argwhere, compress, extract, choose, select, ravel_multi_index/unravel_index
+- [x] add-ufuncs-extras: around, degrees/radians, sinc, gcd, lcm, nan_to_num, logaddexp/logaddexp2, float_power, fmod, heaviside, modf, frexp, ldexp, divmod, unwrap, i0, nextafter, spacing
+- [x] add-signal-poly: convolve, correlate, interp; polyval/polyadd/polysub/polymul/polydiv/polyder/polyint/poly/roots/polyfit
+- [x] add-sorting-extras: lexsort, sort_complex, searchsorted(sorter=)
 
-## Tier 2
-- [x] add-einsum: subscript parser + tensordot/cross/cond/multi_dot/tensorsolve/tensorinv
-- [x] add-random-distributions: geometric/hypergeometric/laplace/logistic/lognormal/pareto/rayleigh/weibull/vonmises/wald/triangular/standard_cauchy/standard_t/zipf/gumbel/f/noncentral*/negative_binomial/power/multinomial/multivariate_normal/dirichlet/bytes; Philox + SFC64
-- [x] add-polynomial-package: numpy.polynomial (Polynomial/Chebyshev/Legendre/Hermite/Laguerre)
-- [x] add-text-io: savetxt/loadtxt/genfromtxt, fromstring/fromfile/tofile, set_printoptions/array2string, scientific printing (#11), binary_repr/base_repr, structured .npy (#14)
-- [x] add-char-strings: numpy.char vectorized string ops
+## Delivered — Tier 2 (all merged + archived)
+- [x] add-einsum: subscript parser + tensordot/cross/cond/multi_dot
+- [x] add-random-distributions: laplace/logistic/gumbel/rayleigh/weibull/pareto/power/standard_cauchy/triangular/lognormal (statistical validation)
+- [x] add-polynomial-package: polynomial.* power basis + chebval/legval/hermval/hermeval/lagval + Polynomial class
+- [x] add-text-io: loadtxt/savetxt/genfromtxt, fromstring, tofile/fromfile, binary_repr/base_repr
+- [x] add-char-strings: numpy.char add/multiply/upper/lower/capitalize/title/strip*/replace/str_len/find/count/startswith/endswith
 
-## Tier 3
-- [ ] masked arrays (numpy.ma)
-- [ ] object dtype, recarray, numpy.testing helpers
-- [ ] datetime business-day + unit conversion
-- [ ] real GPU backends (Metal/CUDA/Vulkan/OpenCL) behind the weak-vtable slots
-- [ ] tracked bit-exact long-tail: #7 choice(replace=False), #8 ziggurat, #9 standalone MT19937
+---
+
+## Remaining — Tier A: complete partially-done modules (small, high value)
+- [ ] add-array-constructors: array/asarray/asanyarray from nested data, fromiter, frombuffer, fromregex, mgrid/ogrid, meshgrid(sparse=), broadcast_arrays
+- [ ] add-manip-extras: block, dsplit, trim_zeros, rollaxis, extra pad modes (reflect/symmetric/wrap/linear_ramp/maximum/mean/median/minimum), require
+- [ ] add-indexing-completion: integer-array + boolean **fancy indexing on ndarray subscript** (get & set), put_along_axis, place, ix_, fill_diagonal, diag_indices, tril_indices/triu_indices, mask_indices, N-D diagonal
+- [ ] add-stats-extras: histogram2d, histogramdd, nanquantile, weighted cov (fweights/aweights), gradient with spacing/axis (N-D), percentile/quantile method= options
+- [ ] add-ufunc-completion: fix, real_if_close, around(negative decimals); type-check helpers iscomplexobj/isrealobj/isreal/iscomplex/isscalar/common_type/mintypecode; emath (scimath) complex-promoting sqrt/log/power; packbits/unpackbits
+- [ ] add-poly1d: poly1d class, complex-root poly(), weighted polyfit, polyvander/polycompanion
+
+## Remaining — Tier B: substantial new subsystems
+- [ ] add-random-discrete-multivariate: geometric, hypergeometric, zipf, logseries, negative_binomial, multinomial, multivariate_normal, dirichlet, vonmises, wald, standard_t, f, noncentral_chisquare/noncentral_f, bytes
+- [ ] add-bitgenerators: Philox, SFC64, standalone bit-exact MT19937 (#9), SeedSequence spawning, bit_generator.state get/set
+- [ ] add-polynomial-classes: Chebyshev/Legendre/Hermite/HermiteE/Laguerre classes with domain/window, fit/roots/deriv/integ/convert + *fromroots/*vander/*companion/*gauss
+- [ ] add-char-strings-completion: split/rsplit/partition/splitlines, join, encode/decode, center/ljust/rjust/zfill, expandtabs, isalpha/isdigit/isspace predicates, N-D string arrays, StringDType (NumPy 2.0)
+- [ ] add-printoptions: set_printoptions/get_printoptions/printoptions, array2string options (precision/threshold/edgeitems/suppress/sign/floatmode), format_float_positional/scientific (#11)
+- [ ] add-stride-tricks: sliding_window_view, as_strided, vectorize, frompyfunc, piecewise, apply_along_axis, apply_over_axes
+
+## Remaining — Tier C: large / specialized subsystems
+- [ ] add-masked-arrays: numpy.ma MaskedArray + masked ufuncs/reductions
+- [ ] add-object-records-testing: dtype=object arrays, recarray/structured field access, numpy.testing (assert_allclose/assert_array_equal/...)
+- [ ] add-datetime-completion: busday_count/is_busday/busday_offset, unit conversion, datetime_as_string, structured-dtype .npy (#14)
+- [ ] add-gpu-backends: real Metal/CUDA/Vulkan/OpenCL kernels behind the weak vtables; device residency/async transfer
+- [ ] add-bitexact-longtail: #7 choice(replace=False), #8 ziggurat normal/exponential, #9 standalone MT19937 stream
+- [ ] add-interop-misc: memmap, savez_compressed, DLPack/array-API (__dlpack__/from_dlpack), ctypeslib, pocketfft/FFTW backend

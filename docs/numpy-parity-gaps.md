@@ -98,28 +98,107 @@ structured-dtype `.npy` (issue #14).
 
 ---
 
-## Tier 3 — long tail / specialized
+# Remaining gaps roadmap (post Tier 1 + Tier 2)
 
-- Masked arrays (`numpy.ma`) — a large subsystem.
-- `object` dtype, `recarray`, `numpy.testing` (`assert_allclose`, …).
-- Datetime business-day functions (`busday_count`, `is_busday`, `busday_offset`)
-  and unit conversion; more datetime/timedelta unit coverage.
-- Real GPU backends (Metal/CUDA/Vulkan/OpenCL) behind the existing weak-vtable
-  slots (the CPU-reference device proves the dispatch path today).
-- Bit-exact long-tail already tracked: `choice(replace=False)` (#7), ziggurat
-  distributions (#8), standalone `MT19937` stream (#9).
+The Tier 1 + Tier 2 sections above are now **delivered**. What follows is the
+current, accurate accounting of what NumPP still lacks vs NumPy, regrouped into
+three tiers. Each entry maps 1:1 to an unchecked item in the
+`numpy-parity-roadmap` OpenSpec change (`tasks.md`) and graduates into its own
+change when started.
+
+## Tier A — complete partially-done modules (small, high value)
+
+### add-array-constructors ⬜
+`array`/`asarray`/`asanyarray` from nested initializer data, `fromiter`,
+`frombuffer`, `fromregex`, `mgrid`/`ogrid`, `meshgrid(sparse=)`,
+`broadcast_arrays`. (Closes the creation-grids non-goal.)
+
+### add-manip-extras ⬜
+`block`, `dsplit`, `trim_zeros`, `rollaxis`, extra `pad` modes (reflect/
+symmetric/wrap/linear_ramp/maximum/mean/median/minimum), `require`.
+
+### add-indexing-completion ⬜ (high value)
+Integer-array and boolean **fancy indexing on the `ndarray` subscript operator**
+(get *and* set), `put_along_axis`, `place`, `ix_`, `fill_diagonal`,
+`diag_indices`, `tril_indices`/`triu_indices`, `mask_indices`, N-D `diagonal`.
+
+### add-stats-extras ⬜
+`histogram2d`, `histogramdd`, `nanquantile`, weighted `cov`
+(`fweights`/`aweights`), `gradient` with spacing/axis (N-D), `percentile`/
+`quantile` `method=` interpolation options.
+
+### add-ufunc-completion ⬜
+`fix`, `real_if_close`, `around` (negative decimals); type-check helpers
+`iscomplexobj`/`isrealobj`/`isreal`/`iscomplex`/`isscalar`/`common_type`/
+`mintypecode`; `numpy.emath` (scimath) complex-promoting `sqrt`/`log`/`power`;
+`packbits`/`unpackbits`.
+
+### add-poly1d ⬜
+`poly1d` class, complex-root reconstruction in `poly()`, weighted `polyfit`,
+`polyvander`, `polycompanion`. (Closes the signal-poly non-goal.)
+
+## Tier B — substantial new subsystems
+
+### add-random-discrete-multivariate ⬜
+`geometric`, `hypergeometric`, `zipf`, `logseries`, `negative_binomial`,
+`multinomial`, `multivariate_normal`, `dirichlet`, `vonmises`, `wald`,
+`standard_t`, `f`, `noncentral_chisquare`/`noncentral_f`, `bytes`.
+
+### add-bitgenerators ⬜
+`Philox`, `SFC64`, standalone bit-exact `MT19937` (#9), `SeedSequence` spawning,
+`bit_generator.state` get/set.
+
+### add-polynomial-classes ⬜
+`Chebyshev`/`Legendre`/`Hermite`/`HermiteE`/`Laguerre` classes with domain/window
+mapping, `fit`/`roots`/`deriv`/`integ`/conversion, plus `*fromroots`/`*vander`/
+`*companion`/`*gauss`. (Completes the polynomial-package non-goal.)
+
+### add-char-strings-completion ⬜
+`split`/`rsplit`/`partition`/`splitlines`, `join`, `encode`/`decode`,
+`center`/`ljust`/`rjust`/`zfill`, `expandtabs`, the `is*` predicates,
+N-D string arrays, and NumPy 2.0 variable-width `StringDType`.
+
+### add-printoptions ⬜
+`set_printoptions`/`get_printoptions`/`printoptions`, `array2string` options
+(precision/threshold/edgeitems/suppress/sign/floatmode), `format_float_positional`/
+`format_float_scientific`, scientific printing (#11).
+
+### add-stride-tricks ⬜
+`sliding_window_view`, `as_strided`, `vectorize`, `frompyfunc`, `piecewise`,
+`apply_along_axis`, `apply_over_axes`.
+
+## Tier C — large / specialized subsystems
+
+### add-masked-arrays ⬜
+`numpy.ma` MaskedArray + masked ufuncs/reductions — a large subsystem.
+
+### add-object-records-testing ⬜
+`dtype=object` arrays, `recarray`/structured field access, and `numpy.testing`
+(`assert_allclose`, `assert_array_equal`, …).
+
+### add-datetime-completion ⬜
+`busday_count`/`is_busday`/`busday_offset`, unit conversion, `datetime_as_string`,
+more unit coverage, structured-dtype `.npy` (#14).
+
+### add-gpu-backends ⬜
+Real Metal/CUDA/Vulkan/OpenCL kernels behind the existing weak-vtable slots
+(the CPU-reference device proves the dispatch path today); device residency /
+async transfer.
+
+### add-bitexact-longtail ⬜
+The tracked bit-exact items: `choice(replace=False)` (#7), ziggurat normal/
+exponential (#8), standalone `MT19937` stream (#9).
+
+### add-interop-misc ⬜
+`memmap`, `savez_compressed`, DLPack / array-API (`__dlpack__`/`from_dlpack`),
+`ctypeslib`, and an optional pocketfft/FFTW FFT backend.
 
 ---
 
 ## Suggested order
 
-1. **add-array-manipulation** (Tier 1: concatenate/stack/split/tile/repeat/flip/roll/pad/atleast_*)
-2. **add-statistics** (Tier 1: cumsum/diff/gradient/median/percentile/quantile/average/cov/corrcoef/digitize + nan variants + nanargmin/max)
-3. **add-creation-grids-indexing** (Tier 1: meshgrid/diag/tri*/vander/logspace + take/put/diagonal/argwhere/select/fancy+boolean indexing)
-4. **add-ufuncs-extras** (Tier 1: round/gcd/lcm/sinc/degrees/nan_to_num/logaddexp/float_power/modf/frexp/ldexp/divmod/unwrap + convolve/correlate/interp)
-5. **add-polynomials** (Tier 1/2: poly1d/polyval/polyfit/roots + numpy.polynomial package)
-6. **add-einsum** (Tier 2)
-7. **add-random-distributions** (Tier 2: full distribution set + Philox/SFC64)
-8. **add-text-io** (Tier 2: savetxt/loadtxt/genfromtxt/print-options/scientific)
-9. **add-char-strings** (Tier 2: numpy.char)
-10. Tier 3 as demand dictates.
+Tier A first (each is small and closes a visible gap in an existing module), then
+Tier B (new subsystems, largest user value: fancy indexing, the polynomial
+classes, print options), then Tier C as demand dictates. **add-indexing-completion**
+(fancy/boolean ndarray subscripting) is the highest-impact single item and is a
+good next pick.
