@@ -13,6 +13,7 @@ Three backends plug into the same vtable slot:
 | null (default) | — | no device; always CPU |
 | CPU-reference device | `-DNUMPP_WITH_REFGPU=ON` | runs device math on the host; proves the dispatch path |
 | **OpenCL** | `-DNUMPP_WITH_OPENCL=ON` | **real GPU**: float32/float64 add/sub/mul/div, negate, sqrt, sum/prod |
+| **CUDA** | `-DNUMPP_WITH_CUDA=ON` | **real NVIDIA GPU**: same op set via CUDA kernels |
 
 ## OpenCL backend
 
@@ -53,6 +54,24 @@ export PATH=/usr/local/cuda-12.8/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH
 ```
 
-(Or, simpler but possibly too old for sm_120: `sudo apt-get install -y nvidia-cuda-toolkit`.)
-Once `nvcc` is available, a `backend/cuda_backend.cu` can register the same
-GpuVTable — tracked as future work.
+(Or, simpler: `sudo apt-get install -y nvidia-cuda-toolkit` — this installs CUDA 12.0,
+whose `nvcc` targets only up to sm_90. That still works on an sm_120 GPU via PTX JIT,
+see below.)
+
+### Building the CUDA backend
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNUMPP_WITH_CUDA=ON
+cmake --build build -j
+```
+
+Implemented in `backend/cuda_backend.cu` (float32/float64 add/sub/mul/div, negate,
+sqrt, sum/prod). Validated on an NVIDIA RTX 5060.
+
+**Forward compatibility (older nvcc, newer GPU):** the RTX 5060 is Blackwell
+(sm_120), but Ubuntu's `nvcc` is CUDA 12.0 (targets ≤ sm_90). The backend is
+compiled to a **PTX-virtual architecture** (`CUDA_ARCHITECTURES "70-virtual"`),
+so the driver JIT-compiles the PTX to the GPU's native sm_120 at runtime — no
+toolkit upgrade required. Installing CUDA ≥ 12.8 would instead allow native SASS
+for sm_120 (faster startup, no JIT). If no NVIDIA GPU is present, `gpu_vtable()`
+is null and everything falls back to the CPU.
