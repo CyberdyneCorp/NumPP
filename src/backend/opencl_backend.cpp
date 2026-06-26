@@ -51,6 +51,14 @@ __kernel void reduce_d(int op, __global const double* a, long n, __global double
   for (long i = gid; i < n; i += gsz) acc = (op == 1) ? acc * a[i] : acc + a[i];
   part[gid] = acc;
 }
+__kernel void gemm_f(long M, long N, long K, __global const float* A, __global const float* B, __global float* C) {
+  long i = get_global_id(0), j = get_global_id(1); if (i >= M || j >= N) return;
+  float acc = 0.0f; for (long p = 0; p < K; ++p) acc += A[i*K+p] * B[p*N+j]; C[i*N+j] = acc;
+}
+__kernel void gemm_d(long M, long N, long K, __global const double* A, __global const double* B, __global double* C) {
+  long i = get_global_id(0), j = get_global_id(1); if (i >= M || j >= N) return;
+  double acc = 0.0; for (long p = 0; p < K; ++p) acc += A[i*K+p] * B[p*N+j]; C[i*N+j] = acc;
+}
 )CLC";
 
 struct CLState {
@@ -59,7 +67,7 @@ struct CLState {
   cl_context ctx = nullptr;
   cl_command_queue queue = nullptr;
   cl_kernel binop_f = nullptr, binop_d = nullptr, unop_f = nullptr, unop_d = nullptr,
-            reduce_f = nullptr, reduce_d = nullptr;
+            reduce_f = nullptr, reduce_d = nullptr, gemm_f = nullptr, gemm_d = nullptr;
 
   CLState() { init(); }
 
@@ -83,10 +91,12 @@ struct CLState {
     binop_f = clCreateKernel(prog, "binop_f", &err);
     unop_f = clCreateKernel(prog, "unop_f", &err);
     reduce_f = clCreateKernel(prog, "reduce_f", &err);
+    gemm_f = clCreateKernel(prog, "gemm_f", &err);
     if (fp64) {
       binop_d = clCreateKernel(prog, "binop_d", &err);
       unop_d = clCreateKernel(prog, "unop_d", &err);
       reduce_d = clCreateKernel(prog, "reduce_d", &err);
+      gemm_d = clCreateKernel(prog, "gemm_d", &err);
     }
     ok = binop_f && unop_f && reduce_f;
   }
@@ -147,6 +157,24 @@ bool run_reduce(cl_kernel k, int op, int64_t n, const void* a, void* out) {
   return true;
 }
 
+template <class T>
+bool run_gemm(cl_kernel k, int64_t m, int64_t n, int64_t kk, const void* a, const void* b, void* out) {
+  CLState& s = state();
+  cl_mem ba = buf(NUMPP_CL_MEM_READ_ONLY | NUMPP_CL_MEM_COPY_HOST_PTR, (size_t)m * kk * sizeof(T), const_cast<void*>(a));
+  cl_mem bb = buf(NUMPP_CL_MEM_READ_ONLY | NUMPP_CL_MEM_COPY_HOST_PTR, (size_t)kk * n * sizeof(T), const_cast<void*>(b));
+  cl_mem bo = buf(NUMPP_CL_MEM_WRITE_ONLY, (size_t)m * n * sizeof(T), nullptr);
+  if (!ba || !bb || !bo) return false;
+  long M = (long)m, N = (long)n, K = (long)kk;
+  cl_uint i = 0;
+  clSetKernelArg(k, i++, sizeof(long), &M); clSetKernelArg(k, i++, sizeof(long), &N); clSetKernelArg(k, i++, sizeof(long), &K);
+  clSetKernelArg(k, i++, sizeof(cl_mem), &ba); clSetKernelArg(k, i++, sizeof(cl_mem), &bb); clSetKernelArg(k, i++, sizeof(cl_mem), &bo);
+  size_t gws[2] = {(size_t)m, (size_t)n};
+  cl_int e = clEnqueueNDRangeKernel(s.queue, k, 2, nullptr, gws, nullptr, 0, nullptr, nullptr);
+  if (e == NUMPP_CL_SUCCESS) e = clEnqueueReadBuffer(s.queue, bo, NUMPP_CL_TRUE, 0, (size_t)m * n * sizeof(T), out, 0, nullptr, nullptr);
+  clReleaseMemObject(ba); clReleaseMemObject(bb); clReleaseMemObject(bo);
+  return e == NUMPP_CL_SUCCESS;
+}
+
 bool ew_binary(int op, DTypeId dt, int64_t n, const void* a, const void* b, void* out) {
   if (op < kGAdd || op > kGDiv || !state().ok) return false;
   if (dt == DTypeId::Float32) return run_elementwise(state().binop_f, op, n, sizeof(float), a, b, out);
@@ -166,7 +194,14 @@ bool reduce_impl(int op, DTypeId dt, int64_t n, const void* a, void* out) {
   return false;
 }
 
-const GpuVTable g_vtable{"opencl", &ew_binary, &ew_unary, &reduce_impl};
+bool gemm_impl(DTypeId dt, int64_t m, int64_t n, int64_t k, const void* A, const void* B, void* C) {
+  if (!state().ok) return false;
+  if (dt == DTypeId::Float32) return run_gemm<float>(state().gemm_f, m, n, k, A, B, C);
+  if (dt == DTypeId::Float64 && state().fp64) return run_gemm<double>(state().gemm_d, m, n, k, A, B, C);
+  return false;
+}
+
+const GpuVTable g_vtable{"opencl", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl};
 
 }  // namespace
 

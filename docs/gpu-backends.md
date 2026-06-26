@@ -12,8 +12,17 @@ Three backends plug into the same vtable slot:
 |---------|------|-------|
 | null (default) | — | no device; always CPU |
 | CPU-reference device | `-DNUMPP_WITH_REFGPU=ON` | runs device math on the host; proves the dispatch path |
-| **OpenCL** | `-DNUMPP_WITH_OPENCL=ON` | **real GPU**: float32/float64 add/sub/mul/div, negate, sqrt, sum/prod |
+| **OpenCL** | `-DNUMPP_WITH_OPENCL=ON` | **real GPU**: float32/float64 add/sub/mul/div, negate, sqrt, sum/prod, **GEMM** |
 | **CUDA** | `-DNUMPP_WITH_CUDA=ON` | **real NVIDIA GPU**: same op set via CUDA kernels |
+
+## GPU matmul (GEMM)
+
+`matmul(A, B, Backend::Cuda)` / `Backend::OpenCL` (or `NUMPP_GPU_TARGET=cuda|opencl`)
+runs float32/float64 matrix multiply on the device; `last_backend()` reports the
+GPU backend. `Auto` matmul still uses BLAS/CPU. Device GEMM matches the CPU result
+within floating-point tolerance (~1e-10) — device FMA contraction makes it accurate
+but not bit-identical (unlike the IEEE-exact element-wise ops). Validated on the
+RTX 5060 via both CUDA and OpenCL.
 
 ## OpenCL backend
 

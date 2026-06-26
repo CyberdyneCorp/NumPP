@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include "numpp/numpp.hpp"
+#include "numpp/backend/config.hpp"  // NUMPP_WITH_* feature macros for the #if guards
 #include "numpp_test.hpp"
 #include "oracle.hpp"
 
@@ -28,10 +29,18 @@ TEST_CASE("capability registry on CPU-only build") {
 #if !NUMPP_WITH_BLAS
   CHECK(!cap.has_blas());
 #endif
+#if !NUMPP_WITH_METAL
   CHECK(!cap.gpu_available(Backend::Metal));
+#endif
+#if !NUMPP_WITH_CUDA
   CHECK(!cap.gpu_available(Backend::Cuda));
+#endif
+#if !NUMPP_WITH_VULKAN
   CHECK(!cap.gpu_available(Backend::Vulkan));
+#endif
+#if !NUMPP_WITH_OPENCL
   CHECK(!cap.gpu_available(Backend::OpenCL));
+#endif
 }
 
 TEST_CASE("matmul correctness and CPU dispatch") {

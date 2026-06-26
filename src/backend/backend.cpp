@@ -5,6 +5,7 @@
 #include <string>
 
 #include "numpp/backend/blas_vtable.hpp"
+#include "numpp/backend/gpu_vtable.hpp"
 #include "numpp/backend/config.hpp"
 
 namespace numpp {
@@ -104,9 +105,9 @@ const CapabilityRegistry& CapabilityRegistry::instance() {
 }
 
 bool CapabilityRegistry::gpu_available(Backend b) const {
-  // GPU backends are present as dispatch slots; device probing lands with the
-  // GPU kernels (roadmap Phase 10). Compiled-in but no device -> unavailable.
-  return backend_compiled(b) && false;
+  // Compiled in AND a device actually registered a vtable (gpu_vtable() probes
+  // for a real device; null means compiled but no device present).
+  return backend_compiled(b) && gpu_vtable() != nullptr;
 }
 
 Backend last_backend() { return t_last; }
@@ -130,6 +131,19 @@ ndarray matmul(const ndarray& a, const ndarray& b, Backend forced) {
   if (is_gpu(target) && !cap.gpu_available(target)) {
     throw not_implemented_error(std::string("backend '") + backend_name(target) +
                                 "' is not available in this build");
+  }
+
+  // Explicitly-targeted GPU GEMM (forced backend or NUMPP_GPU_TARGET). Auto stays
+  // on BLAS/CPU. The device gemm accumulates in p-order so it is bitwise-equal to
+  // the CPU gemm for float32/float64.
+  if (is_gpu(target) && gpu_vtable() && gpu_vtable()->gemm && (dt == kFloat32 || dt == kFloat64)) {
+    ndarray ac = a.astype(dt).ascontiguousarray();
+    ndarray bc = b.astype(dt).ascontiguousarray();
+    ndarray c(Shape{m, n}, dt, Order::C);
+    if (gpu_vtable()->gemm(dt.id(), m, n, k, ac.bytes(), bc.bytes(), c.bytes())) {
+      t_last = target;
+      return c;
+    }
   }
 
   const bool blas_dtype = (dt == kFloat32 || dt == kFloat64 || dt == kComplex64 || dt == kComplex128);

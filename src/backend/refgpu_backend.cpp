@@ -65,7 +65,25 @@ bool reduce_impl(int op, DTypeId dt, int64_t n, const void* a, void* out) {
   return dispatch(dt, [&](auto tag) { using T = decltype(tag); return red<T>(op, n, static_cast<const T*>(a), static_cast<T*>(out)); });
 }
 
-const GpuVTable g_vtable{"refgpu(cpu)", &ew_binary, &ew_unary, &reduce_impl};
+template <class T>
+void gemm_t(int64_t m, int64_t n, int64_t k, const T* A, const T* B, T* C) {
+  for (int64_t i = 0; i < m; ++i) {
+    for (int64_t j = 0; j < n; ++j) C[i * n + j] = T{};
+    for (int64_t p = 0; p < k; ++p) {
+      const T aip = A[i * k + p];
+      const T* brow = B + p * n;
+      T* crow = C + i * n;
+      for (int64_t j = 0; j < n; ++j) crow[j] += aip * brow[j];
+    }
+  }
+}
+bool gemm_impl(DTypeId dt, int64_t m, int64_t n, int64_t k, const void* A, const void* B, void* C) {
+  if (dt == DTypeId::Float32) { gemm_t<float>(m, n, k, static_cast<const float*>(A), static_cast<const float*>(B), static_cast<float*>(C)); return true; }
+  if (dt == DTypeId::Float64) { gemm_t<double>(m, n, k, static_cast<const double*>(A), static_cast<const double*>(B), static_cast<double*>(C)); return true; }
+  return false;
+}
+
+const GpuVTable g_vtable{"refgpu(cpu)", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl};
 
 }  // namespace
 

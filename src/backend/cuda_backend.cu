@@ -45,6 +45,16 @@ __global__ void k_reduce(int op, const T* a, long n, T* part) {
   part[gid] = acc;
 }
 
+template <class T>
+__global__ void k_gemm(long M, long N, long K, const T* A, const T* B, T* C) {
+  long i = blockIdx.y * (long)blockDim.y + threadIdx.y;
+  long j = blockIdx.x * (long)blockDim.x + threadIdx.x;
+  if (i >= M || j >= N) return;
+  T acc = T(0);
+  for (long p = 0; p < K; ++p) acc += A[i * K + p] * B[p * N + j];
+  C[i * N + j] = acc;
+}
+
 bool have_device() {
   int count = 0;
   return cudaGetDeviceCount(&count) == cudaSuccess && count > 0;
@@ -92,6 +102,31 @@ bool reduce_t(int op, int64_t n, const void* a, void* out) {
   return true;
 }
 
+template <class T>
+bool gemm_t(int64_t m, int64_t n, int64_t k, const void* A, const void* B, void* C) {
+  T *da = nullptr, *db = nullptr, *dc = nullptr;
+  bool ok = cudaMalloc(&da, (size_t)m * k * sizeof(T)) == cudaSuccess &&
+            cudaMalloc(&db, (size_t)k * n * sizeof(T)) == cudaSuccess &&
+            cudaMalloc(&dc, (size_t)m * n * sizeof(T)) == cudaSuccess;
+  if (ok) {
+    cudaMemcpy(da, A, (size_t)m * k * sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(db, B, (size_t)k * n * sizeof(T), cudaMemcpyHostToDevice);
+    dim3 blk(16, 16);
+    dim3 grid((unsigned)((n + 15) / 16), (unsigned)((m + 15) / 16));
+    k_gemm<T><<<grid, blk>>>((long)m, (long)n, (long)k, da, db, dc);
+    ok = cudaDeviceSynchronize() == cudaSuccess &&
+         cudaMemcpy(C, dc, (size_t)m * n * sizeof(T), cudaMemcpyDeviceToHost) == cudaSuccess;
+  }
+  cudaFree(da); cudaFree(db); cudaFree(dc);
+  return ok;
+}
+bool gemm_impl(DTypeId dt, int64_t m, int64_t n, int64_t k, const void* A, const void* B, void* C) {
+  if (!have_device()) return false;
+  if (dt == DTypeId::Float32) return gemm_t<float>(m, n, k, A, B, C);
+  if (dt == DTypeId::Float64) return gemm_t<double>(m, n, k, A, B, C);
+  return false;
+}
+
 bool ew_binary(int op, DTypeId dt, int64_t n, const void* a, const void* b, void* out) {
   if (op < kGAdd || op > kGDiv || !have_device()) return false;
   if (dt == DTypeId::Float32) return elementwise<float>(op, n, a, b, out, false);
@@ -111,7 +146,7 @@ bool reduce_impl(int op, DTypeId dt, int64_t n, const void* a, void* out) {
   return false;
 }
 
-const GpuVTable g_vtable{"cuda", &ew_binary, &ew_unary, &reduce_impl};
+const GpuVTable g_vtable{"cuda", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl};
 
 }  // namespace
 
