@@ -25,5 +25,5 @@ PR/merge/archive. Durable tracker (survives context resets).
 ## Bug log (oracle divergences → issues)
 | # | issue | capability | regression test | status |
 |---|-------|-----------|-----------------|--------|
-| 2 | [#36](https://github.com/CyberdyneCorp/NumPP/issues/36) Philox raw stream not bit-exact with numpy | bitgenerators | test_bitgenerators.cpp determinism test | 🟡 open (deterministic; SFC64 bit-exact) |
+| 2 | [#36](https://github.com/CyberdyneCorp/NumPP/issues/36) Philox raw stream not bit-exact with numpy | bitgenerators | test_bitgenerators.cpp `Philox random_raw bit-exact vs numpy` | ✅ fixed (M0=0xD2E7470EE14C6C93 + increment-before-generate) |
 | 1 | [#26](https://github.com/CyberdyneCorp/NumPP/issues/26) spacing() sign wrong for negative inputs | ufuncs-extras | test_mathx.cpp `spacing vs numpy` | ✅ fixed (pre-merge) |
