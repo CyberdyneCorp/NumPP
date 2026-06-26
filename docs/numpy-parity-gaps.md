@@ -4,12 +4,13 @@ Status of NumPP v1.0.0 against NumPy's public API, and a prioritized roadmap of
 what's still missing. ✅ = implemented & oracle-validated, 🟡 = partial, ⬜ = missing.
 Each ⬜ tier below is intended to become its own OpenSpec change.
 
-> **Update (2026-06-26):** the entire **Tier 1 + Tier 2 backlog is delivered**
-> (12 capabilities, 28 baseline specs, 421 test cases / 1246 oracle checks, 0
-> divergences; one bug found & fixed, #26). Items marked ✅ here may have a few
-> advanced options deferred — see each change's "Non-goals" for specifics (e.g.
-> Philox/SFC64 & discrete/multivariate random, the orthogonal-polynomial classes,
-> fancy-indexing subscript operators). Only **Tier 3** remains.
+> **Update (2026-06-26):** **Tier 1 + Tier 2 + Tier A + most of Tier B are
+> delivered** — 40 baseline capabilities, **537 test cases / 1447 oracle checks,
+> 0 failures**. Bugs found: #26 (spacing, fixed) and #36 (Philox not bit-exact,
+> open — SFC64 is bit-exact). Items marked ✅ may have advanced options deferred
+> (see each change's "Non-goals"). **Remaining:** the orthogonal-polynomial
+> *classes* (`add-polynomial-classes`), a handful of Tier B sub-items, and all of
+> **Tier C**.
 
 ## What's already done (v1.0.0)
 
@@ -137,35 +138,37 @@ Integer-array and boolean **fancy indexing on the `ndarray` subscript operator**
 `poly1d` class, complex-root reconstruction in `poly()`, weighted `polyfit`,
 `polyvander`, `polycompanion`. (Closes the signal-poly non-goal.)
 
-## Tier B — substantial new subsystems
+## Tier B — substantial new subsystems ✅ MOSTLY DELIVERED (tier-b-completion)
 
-### add-random-discrete-multivariate ⬜
-`geometric`, `hypergeometric`, `zipf`, `logseries`, `negative_binomial`,
-`multinomial`, `multivariate_normal`, `dirichlet`, `vonmises`, `wald`,
-`standard_t`, `f`, `noncentral_chisquare`/`noncentral_f`, `bytes`.
+### add-random-discrete-multivariate ✅
+`geometric`, `zipf`, `logseries`, `negative_binomial`, `multinomial`,
+`multivariate_normal`, `dirichlet`, `vonmises`, `wald`, `standard_t`, `f`,
+`noncentral_chisquare`. Deferred: `hypergeometric`, `noncentral_f`, `bytes`.
 
-### add-bitgenerators ⬜
-`Philox`, `SFC64`, standalone bit-exact `MT19937` (#9), `SeedSequence` spawning,
-`bit_generator.state` get/set.
+### add-bitgenerators 🟡
+`SFC64` ✅ (bit-exact). `Philox` 🟡 (deterministic; numpy bit-exactness tracked
+in **#36**). Deferred: standalone bit-exact `MT19937` (#9), `SeedSequence`
+spawning, `bit_generator.state` get/set.
 
-### add-polynomial-classes ⬜
-`Chebyshev`/`Legendre`/`Hermite`/`HermiteE`/`Laguerre` classes with domain/window
-mapping, `fit`/`roots`/`deriv`/`integ`/conversion, plus `*fromroots`/`*vander`/
-`*companion`/`*gauss`. (Completes the polynomial-package non-goal.)
+### add-polynomial-classes ⬜ (only `*vander`/`*roots` shipped via orthopoly)
+The `Chebyshev`/`Legendre`/`Hermite`/`HermiteE`/`Laguerre` **classes** with
+domain/window mapping, `fit`/`roots`/`deriv`/`integ`/conversion, plus
+`*fromroots`/`*companion`/`*gauss`. (`*vander` and `*roots` free functions are
+done; the classes and calculus are the remaining work.)
 
-### add-char-strings-completion ⬜
-`split`/`rsplit`/`partition`/`splitlines`, `join`, `encode`/`decode`,
-`center`/`ljust`/`rjust`/`zfill`, `expandtabs`, the `is*` predicates,
-N-D string arrays, and NumPy 2.0 variable-width `StringDType`.
+### add-char-strings-completion ✅
+`center`/`ljust`/`rjust`/`zfill`, `swapcase`, `expandtabs`, and the `is*`
+predicates. Deferred: `split`/`rsplit`/`partition`/`splitlines`, `join`,
+`encode`/`decode`, N-D string arrays, NumPy 2.0 `StringDType`.
 
-### add-printoptions ⬜
-`set_printoptions`/`get_printoptions`/`printoptions`, `array2string` options
-(precision/threshold/edgeitems/suppress/sign/floatmode), `format_float_positional`/
-`format_float_scientific`, scientific printing (#11).
+### add-printoptions ✅
+`set_printoptions`/`get_printoptions`, `format_float_positional`/
+`format_float_scientific`, `array2string`. Deferred: full `array2string`
+threshold/edgeitems/floatmode controls.
 
-### add-stride-tricks ⬜
-`sliding_window_view`, `as_strided`, `vectorize`, `frompyfunc`, `piecewise`,
-`apply_along_axis`, `apply_over_axes`.
+### add-stride-tricks ✅
+`sliding_window_view`, `as_strided`, `piecewise`, `apply_along_axis` (+ `polyvander`,
+`polycompanion`, `mask_indices`). Deferred: `vectorize`, `frompyfunc`, `apply_over_axes`.
 
 ## Tier C — large / specialized subsystems
 
