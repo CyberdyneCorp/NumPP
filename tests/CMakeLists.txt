@@ -60,6 +60,8 @@ add_executable(numpp_tests
     test_busday.cpp
     test_testing.cpp
     test_masked.cpp
+    test_masked_arith.cpp
+    test_masked_reduce.cpp
     test_struct.cpp
     test_gpu.cpp
     test_nanreduce.cpp

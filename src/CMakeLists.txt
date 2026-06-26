@@ -44,6 +44,8 @@ add_library(numpp
     datetime/busday.cpp
     testing/testing.cpp
     ma/masked.cpp
+    ma/masked_arith.cpp
+    ma/masked_reduce.cpp
     struct/struct.cpp
     backend/backend.cpp
 )
