@@ -29,6 +29,12 @@ option(NUMPP_WITH_CUDA          "Enable optional CUDA GPU backend"  OFF)
 option(NUMPP_WITH_OPENCL        "Enable optional OpenCL GPU backend" OFF)
 option(NUMPP_WITH_REFGPU        "Enable CPU-reference GPU device (testing)" OFF)
 
+# Enable the CUDA language only when the CUDA backend is requested. PTX-virtual
+# architectures (set on the numpp target) let an older nvcc JIT to newer GPUs.
+if(NUMPP_WITH_CUDA)
+    enable_language(CUDA)
+endif()
+
 # -----------------------------------------------------------------------------
 # Project-wide settings
 # -----------------------------------------------------------------------------

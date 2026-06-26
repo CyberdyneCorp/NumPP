@@ -59,8 +59,16 @@ else()
 endif()
 
 # LAPACK backend (real vs null) — same weak-vtable model as BLAS.
-# GPU backend (real OpenCL vs CPU-reference 'device' vs null) — weak-vtable model.
-if(NUMPP_WITH_OPENCL)
+# GPU backend (real CUDA / OpenCL vs CPU-reference 'device' vs null) — weak-vtable model.
+if(NUMPP_WITH_CUDA)
+    target_sources(numpp PRIVATE backend/cuda_backend.cu)
+    find_package(CUDAToolkit REQUIRED)
+    target_link_libraries(numpp PUBLIC CUDA::cudart)
+    # PTX-only (virtual) arch: the driver JITs it to the GPU's native arch, so an
+    # older nvcc can target a newer GPU (e.g. nvcc 12.0 -> sm_120 / RTX 5060).
+    set_target_properties(numpp PROPERTIES CUDA_ARCHITECTURES "70-virtual"
+                                           CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
+elseif(NUMPP_WITH_OPENCL)
     target_sources(numpp PRIVATE backend/opencl_backend.cpp)
     # Link the OpenCL ICD loader. Prefer a discovered library; fall back to the
     # versioned soname so it works without the -dev symlink/headers.
@@ -92,9 +100,10 @@ target_include_directories(numpp PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-target_compile_options(numpp PRIVATE -Wall -Wextra -Wpedantic)
+# Host C++ warnings only — these flags confuse nvcc, so guard by language.
+target_compile_options(numpp PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wpedantic>)
 if(NUMPP_WARNINGS_AS_ERRORS)
-    target_compile_options(numpp PRIVATE -Werror)
+    target_compile_options(numpp PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
 endif()
 
 if(NUMPP_ENABLE_ASAN)
