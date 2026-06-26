@@ -44,6 +44,6 @@
 - [x] add-masked-arrays: numpy.ma MaskedArray + masked_where/invalid/equal/greater, filled/compressed/count, sum/mean/min/max (arithmetic operators & per-axis reductions deferred)
 - [x] add-object-records-testing: numpy.testing (array_equal/array_equiv/assert_*) ✅; structured field access already existed; **dtype=object arrays deferred** (type-erased storage)
 - [x] add-datetime-completion: is_busday/busday_count/busday_offset, datetime_as_string ✅; full unit conversion & structured-dtype .npy (#14) deferred
-- [ ] add-gpu-backends: real Metal/CUDA/Vulkan/OpenCL kernels — **deferred: needs platform SDKs + GPU hardware to build/test (not possible in this environment)**; weak-vtable dispatch + CPU-reference device already proven
+- [x] add-gpu-backends: **real OpenCL backend delivered** (validated on NVIDIA RTX 5060: float32/64 add/sub/mul/div/neg/sqrt + sum/prod on the GPU, results equal CPU). CUDA needs the toolkit (nvcc/cudart — install commands in docs); Metal/Vulkan and device-resident buffers/GEMM deferred
 - [ ] add-bitexact-longtail: #7 choice(replace=False), #8 ziggurat, #9 MT19937 — **deferred: deep numpy-internal bit-exact reverse-engineering (same hard class as Philox #36)**
 - [ ] add-interop-misc: memmap, DEFLATE savez_compressed, DLPack/array-API, ctypeslib, FFTW — **deferred: external deps / conflict with no-dependency portability goal**
