@@ -29,6 +29,9 @@
 - [x] add-ufunc-completion: fix, real_if_close, around(negative decimals); type-check helpers iscomplexobj/isrealobj/isreal/iscomplex/isscalar/common_type/mintypecode; emath (scimath) complex-promoting sqrt/log/power; packbits/unpackbits
 - [x] add-poly1d: poly1d class, complex-root poly(), weighted polyfit, polyvander/polycompanion
 
+## Remaining — Tier A leftovers (deferred sub-items from tier-a-completion)
+- [ ] add-tier-a-leftovers: extra pad modes (reflect/symmetric/wrap/linear_ramp/maximum/mean/median/minimum), N-D gradient with spacing/axis, percentile/quantile method= options, mask_indices, N-D diagonal, polyvander/polycompanion, complex-root poly(), fromregex, asanyarray, around(negative decimals), isscalar/mintypecode
+
 ## Remaining — Tier B: substantial new subsystems
 - [ ] add-random-discrete-multivariate: geometric, hypergeometric, zipf, logseries, negative_binomial, multinomial, multivariate_normal, dirichlet, vonmises, wald, standard_t, f, noncentral_chisquare/noncentral_f, bytes
 - [ ] add-bitgenerators: Philox, SFC64, standalone bit-exact MT19937 (#9), SeedSequence spawning, bit_generator.state get/set
