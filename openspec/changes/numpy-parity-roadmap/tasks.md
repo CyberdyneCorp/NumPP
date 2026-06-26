@@ -41,7 +41,7 @@
 - [x] add-stride-tricks: sliding_window_view, as_strided, vectorize, frompyfunc, piecewise, apply_along_axis, apply_over_axes
 
 ## Tier C — large / specialized subsystems (achievable subset delivered via tier-c-partial)
-- [x] add-masked-arrays: numpy.ma MaskedArray + masked_where/invalid/equal/greater, filled/compressed/count, sum/mean/min/max (arithmetic operators & per-axis reductions deferred)
+- [x] add-masked-arrays: numpy.ma MaskedArray + constructors, filled/compressed/count, flat AND per-axis sum/prod/mean/min/max/count, arithmetic (add/sub/mul/div), comparison/range masks, getmask/getdata. Deferred: hard/soft masks, masked records
 - [x] add-object-records-testing: numpy.testing (array_equal/array_equiv/assert_*) ✅; structured field access already existed; **dtype=object arrays deferred** (type-erased storage)
 - [x] add-datetime-completion: is_busday/busday_count/busday_offset, datetime_as_string ✅; full unit conversion & structured-dtype .npy (#14) deferred
 - [x] add-gpu-backends: **real OpenCL + CUDA backends incl. GPU GEMM/matmul, a device buffer pool and a tiled shared-memory GEMM** (validated on NVIDIA RTX 5060 / sm_120; ~5-8x over CPU on fp64 matmul, 109 GFLOP/s @ 1024³; CUDA uses PTX-virtual arch so nvcc 12.0 JITs to sm_120). Deferred: Metal/Vulkan, true device-resident ndarrays, pinned/unified memory, cuBLAS/clBLAST path

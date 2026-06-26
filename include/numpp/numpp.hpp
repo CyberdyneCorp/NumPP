@@ -52,5 +52,6 @@
 #include "numpp/datetime/busday.hpp"
 #include "numpp/testing/testing.hpp"
 #include "numpp/ma/masked.hpp"
+#include "numpp/ma/masked_extra.hpp"
 #include "numpp/struct/struct.hpp"
 #include "numpp/backend/backend.hpp"
