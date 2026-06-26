@@ -106,34 +106,34 @@ three tiers. Each entry maps 1:1 to an unchecked item in the
 `numpy-parity-roadmap` OpenSpec change (`tasks.md`) and graduates into its own
 change when started.
 
-## Tier A — complete partially-done modules (small, high value)
+## Tier A — complete partially-done modules ✅ DELIVERED (tier-a-completion)
 
-### add-array-constructors ⬜
+### add-array-constructors ✅
 `array`/`asarray`/`asanyarray` from nested initializer data, `fromiter`,
 `frombuffer`, `fromregex`, `mgrid`/`ogrid`, `meshgrid(sparse=)`,
 `broadcast_arrays`. (Closes the creation-grids non-goal.)
 
-### add-manip-extras ⬜
+### add-manip-extras ✅
 `block`, `dsplit`, `trim_zeros`, `rollaxis`, extra `pad` modes (reflect/
 symmetric/wrap/linear_ramp/maximum/mean/median/minimum), `require`.
 
-### add-indexing-completion ⬜ (high value)
+### add-indexing-completion ✅ (high value)
 Integer-array and boolean **fancy indexing on the `ndarray` subscript operator**
 (get *and* set), `put_along_axis`, `place`, `ix_`, `fill_diagonal`,
 `diag_indices`, `tril_indices`/`triu_indices`, `mask_indices`, N-D `diagonal`.
 
-### add-stats-extras ⬜
+### add-stats-extras ✅
 `histogram2d`, `histogramdd`, `nanquantile`, weighted `cov`
 (`fweights`/`aweights`), `gradient` with spacing/axis (N-D), `percentile`/
 `quantile` `method=` interpolation options.
 
-### add-ufunc-completion ⬜
+### add-ufunc-completion ✅
 `fix`, `real_if_close`, `around` (negative decimals); type-check helpers
 `iscomplexobj`/`isrealobj`/`isreal`/`iscomplex`/`isscalar`/`common_type`/
 `mintypecode`; `numpy.emath` (scimath) complex-promoting `sqrt`/`log`/`power`;
 `packbits`/`unpackbits`.
 
-### add-poly1d ⬜
+### add-poly1d ✅
 `poly1d` class, complex-root reconstruction in `poly()`, weighted `polyfit`,
 `polyvander`, `polycompanion`. (Closes the signal-poly non-goal.)
 

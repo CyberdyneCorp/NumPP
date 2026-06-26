@@ -18,13 +18,16 @@
 
 ---
 
-## Remaining — Tier A: complete partially-done modules (small, high value)
-- [ ] add-array-constructors: array/asarray/asanyarray from nested data, fromiter, frombuffer, fromregex, mgrid/ogrid, meshgrid(sparse=), broadcast_arrays
-- [ ] add-manip-extras: block, dsplit, trim_zeros, rollaxis, extra pad modes (reflect/symmetric/wrap/linear_ramp/maximum/mean/median/minimum), require
-- [ ] add-indexing-completion: integer-array + boolean **fancy indexing on ndarray subscript** (get & set), put_along_axis, place, ix_, fill_diagonal, diag_indices, tril_indices/triu_indices, mask_indices, N-D diagonal
-- [ ] add-stats-extras: histogram2d, histogramdd, nanquantile, weighted cov (fweights/aweights), gradient with spacing/axis (N-D), percentile/quantile method= options
-- [ ] add-ufunc-completion: fix, real_if_close, around(negative decimals); type-check helpers iscomplexobj/isrealobj/isreal/iscomplex/isscalar/common_type/mintypecode; emath (scimath) complex-promoting sqrt/log/power; packbits/unpackbits
-- [ ] add-poly1d: poly1d class, complex-root poly(), weighted polyfit, polyvander/polycompanion
+## Delivered — Tier A (merged via the `tier-a-completion` change)
+> Headline functions of each item shipped; a few advanced sub-items (extra pad
+> modes, N-D gradient spacing, `mask_indices`, `polyvander`, complex-root `poly()`,
+> `fromregex`, `around` negative decimals) are deferred — see the change Non-goals.
+- [x] add-array-constructors: array/asarray/asanyarray from nested data, fromiter, frombuffer, fromregex, mgrid/ogrid, meshgrid(sparse=), broadcast_arrays
+- [x] add-manip-extras: block, dsplit, trim_zeros, rollaxis, extra pad modes (reflect/symmetric/wrap/linear_ramp/maximum/mean/median/minimum), require
+- [x] add-indexing-completion: integer-array + boolean **fancy indexing on ndarray subscript** (get & set), put_along_axis, place, ix_, fill_diagonal, diag_indices, tril_indices/triu_indices, mask_indices, N-D diagonal
+- [x] add-stats-extras: histogram2d, histogramdd, nanquantile, weighted cov (fweights/aweights), gradient with spacing/axis (N-D), percentile/quantile method= options
+- [x] add-ufunc-completion: fix, real_if_close, around(negative decimals); type-check helpers iscomplexobj/isrealobj/isreal/iscomplex/isscalar/common_type/mintypecode; emath (scimath) complex-promoting sqrt/log/power; packbits/unpackbits
+- [x] add-poly1d: poly1d class, complex-root poly(), weighted polyfit, polyvander/polycompanion
 
 ## Remaining — Tier B: substantial new subsystems
 - [ ] add-random-discrete-multivariate: geometric, hypergeometric, zipf, logseries, negative_binomial, multinomial, multivariate_normal, dirichlet, vonmises, wald, standard_t, f, noncentral_chisquare/noncentral_f, bytes
