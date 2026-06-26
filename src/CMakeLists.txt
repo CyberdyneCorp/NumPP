@@ -41,6 +41,9 @@ add_library(numpp
     strings/strings.cpp
     strings/char.cpp
     datetime/datetime.cpp
+    datetime/busday.cpp
+    testing/testing.cpp
+    ma/masked.cpp
     struct/struct.cpp
     backend/backend.cpp
 )

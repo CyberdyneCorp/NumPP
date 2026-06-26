@@ -40,10 +40,10 @@
 - [x] add-printoptions: set_printoptions/get_printoptions/printoptions, array2string options (precision/threshold/edgeitems/suppress/sign/floatmode), format_float_positional/scientific (#11)
 - [x] add-stride-tricks: sliding_window_view, as_strided, vectorize, frompyfunc, piecewise, apply_along_axis, apply_over_axes
 
-## Remaining — Tier C: large / specialized subsystems
-- [ ] add-masked-arrays: numpy.ma MaskedArray + masked ufuncs/reductions
-- [ ] add-object-records-testing: dtype=object arrays, recarray/structured field access, numpy.testing (assert_allclose/assert_array_equal/...)
-- [ ] add-datetime-completion: busday_count/is_busday/busday_offset, unit conversion, datetime_as_string, structured-dtype .npy (#14)
-- [ ] add-gpu-backends: real Metal/CUDA/Vulkan/OpenCL kernels behind the weak vtables; device residency/async transfer
-- [ ] add-bitexact-longtail: #7 choice(replace=False), #8 ziggurat normal/exponential, #9 standalone MT19937 stream
-- [ ] add-interop-misc: memmap, savez_compressed, DLPack/array-API (__dlpack__/from_dlpack), ctypeslib, pocketfft/FFTW backend
+## Tier C — large / specialized subsystems (achievable subset delivered via tier-c-partial)
+- [x] add-masked-arrays: numpy.ma MaskedArray + masked_where/invalid/equal/greater, filled/compressed/count, sum/mean/min/max (arithmetic operators & per-axis reductions deferred)
+- [x] add-object-records-testing: numpy.testing (array_equal/array_equiv/assert_*) ✅; structured field access already existed; **dtype=object arrays deferred** (type-erased storage)
+- [x] add-datetime-completion: is_busday/busday_count/busday_offset, datetime_as_string ✅; full unit conversion & structured-dtype .npy (#14) deferred
+- [ ] add-gpu-backends: real Metal/CUDA/Vulkan/OpenCL kernels — **deferred: needs platform SDKs + GPU hardware to build/test (not possible in this environment)**; weak-vtable dispatch + CPU-reference device already proven
+- [ ] add-bitexact-longtail: #7 choice(replace=False), #8 ziggurat, #9 MT19937 — **deferred: deep numpy-internal bit-exact reverse-engineering (same hard class as Philox #36)**
+- [ ] add-interop-misc: memmap, DEFLATE savez_compressed, DLPack/array-API, ctypeslib, FFTW — **deferred: external deps / conflict with no-dependency portability goal**
