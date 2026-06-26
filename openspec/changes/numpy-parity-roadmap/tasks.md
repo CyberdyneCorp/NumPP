@@ -35,7 +35,7 @@
 ## Remaining — Tier B: substantial new subsystems
 - [x] add-random-discrete-multivariate: geometric, hypergeometric, zipf, logseries, negative_binomial, multinomial, multivariate_normal, dirichlet, vonmises, wald, standard_t, f, noncentral_chisquare/noncentral_f, bytes
 - [x] add-bitgenerators: Philox, SFC64, standalone bit-exact MT19937 (#9), SeedSequence spawning, bit_generator.state get/set
-- [ ] add-polynomial-classes: Chebyshev/Legendre/Hermite/HermiteE/Laguerre classes with domain/window, fit/roots/deriv/integ/convert + *fromroots/*vander/*companion/*gauss
+- [x] add-polynomial-classes: Chebyshev/Legendre/Hermite/HermiteE/Laguerre classes with domain/window, fit/roots/deriv/integ/convert + *fromroots/*vander/*companion/*gauss
 - [x] add-char-strings-completion: split/rsplit/partition/splitlines, join, encode/decode, center/ljust/rjust/zfill, expandtabs, isalpha/isdigit/isspace predicates, N-D string arrays, StringDType (NumPy 2.0)
 - [x] add-printoptions: set_printoptions/get_printoptions/printoptions, array2string options (precision/threshold/edgeitems/suppress/sign/floatmode), format_float_positional/scientific (#11)
 - [x] add-stride-tricks: sliding_window_view, as_strided, vectorize, frompyfunc, piecewise, apply_along_axis, apply_over_axes

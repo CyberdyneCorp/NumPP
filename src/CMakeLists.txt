@@ -23,11 +23,15 @@ add_library(numpp
     random/random.cpp
     random/distributions.cpp
     random/distributions2.cpp
+    random/distributions3.cpp
     random/bitgenerators.cpp
     polynomial/orthopoly.cpp
+    polynomial/orthopoly_calc.cpp
     strings/char_extra.cpp
+    strings/char_extra2.cpp
     io/printopts.cpp
     lib/striding.cpp
+    lib/striding2.cpp
     io/npy.cpp
     textio/textio.cpp
     io/npz.cpp
