@@ -47,6 +47,7 @@ add_library(numpp
     ma/masked_arith.cpp
     ma/masked_reduce.cpp
     struct/struct.cpp
+    interop/interop.cpp
     backend/backend.cpp
 )
 add_library(numpp::numpp ALIAS numpp)
