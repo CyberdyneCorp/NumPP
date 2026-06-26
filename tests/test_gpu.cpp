@@ -52,3 +52,28 @@ TEST_CASE("gpu: integer ops never use device (fall back to CPU)") {
   CHECK(r.item<int64_t>({3}) == 6);
   unsetenv("NUMPP_GPU_MIN");
 }
+
+TEST_CASE("gpu gemm: device matmul equals CPU when a GPU backend is available") {
+  // C(40x30) = A(40x50) @ B(50x30), float64.
+  ndarray A = arange(0.0, 2000.0, 1.0, kFloat64).reshape({40, 50});
+  ndarray B = arange(0.0, 1500.0, 1.0, kFloat64).reshape({50, 30});
+  B = multiply(B, full({50, 30}, 0.001, kFloat64));  // scale to keep magnitudes sane
+  ndarray cpu = matmul(A, B, Backend::Cpu);
+  bool ran_on_device = false;
+  for (Backend g : {Backend::Cuda, Backend::OpenCL}) {
+    try {
+      ndarray dev = matmul(A, B, g);             // forced GPU backend
+      CHECK(last_backend() == g);
+      // p-order accumulation matches the CPU gemm within fp tolerance (device FMA
+      // contraction makes it accurate but not necessarily bitwise-identical).
+      CHECK(allclose(dev, cpu, 1e-10, 1e-10));
+      ran_on_device = true;
+      std::fprintf(stderr, "  [gpu] gemm ran on %s: matches CPU within 1e-10\n",
+                   g == Backend::Cuda ? "cuda" : "opencl");
+    } catch (const not_implemented_error&) {
+      // backend not compiled in this build — skip
+    }
+  }
+  if (!ran_on_device) std::fprintf(stderr, "  [gpu] gemm: no GPU backend in this build (cpu-only)\n");
+  CHECK(true);
+}
