@@ -49,5 +49,8 @@
 #include "numpp/strings/strings.hpp"
 #include "numpp/strings/char.hpp"
 #include "numpp/datetime/datetime.hpp"
+#include "numpp/datetime/busday.hpp"
+#include "numpp/testing/testing.hpp"
+#include "numpp/ma/masked.hpp"
 #include "numpp/struct/struct.hpp"
 #include "numpp/backend/backend.hpp"
