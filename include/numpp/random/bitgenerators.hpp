@@ -9,6 +9,20 @@
 namespace numpp {
 namespace random {
 
+// numpy.random.MT19937, seeded from SeedSequence; bit-exact raw stream with
+// numpy.random.MT19937(seed).random_raw() (the native 32-bit output).
+class NUMPP_API MT19937BitGen {
+ public:
+  explicit MT19937BitGen(uint64_t seed);
+  uint32_t next32();
+  ndarray random_raw(int64_t n);  // uint64 array of 32-bit draws
+
+ private:
+  void twist();
+  std::array<uint32_t, 624> mt_{};
+  int pos_ = 624;
+};
+
 // numpy.random.Philox (Philox4x64-10), seeded from SeedSequence; bit-exact raw
 // stream with numpy.random.Philox(seed).random_raw().
 class NUMPP_API Philox {
