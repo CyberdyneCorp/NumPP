@@ -45,6 +45,7 @@ add_executable(numpp_tests
     test_fft2.cpp
     test_fft3.cpp
     test_random.cpp
+    test_rng_bitexact.cpp
     test_random2.cpp
     test_random3.cpp
     test_random4.cpp

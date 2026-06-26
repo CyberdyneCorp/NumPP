@@ -56,8 +56,6 @@ class NUMPP_API Generator {
 
  private:
   PCG64 bit_;
-  bool has_gauss_ = false;
-  double gauss_ = 0.0;
 };
 
 // numpy.random.default_rng(seed) equivalent.
