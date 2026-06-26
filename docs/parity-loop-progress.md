@@ -18,7 +18,9 @@ PR/merge/archive. Durable tracker (survives context resets).
 | 9 | random-distributions (laplace/logistic/gumbel/rayleigh/weibull/pareto/power/cauchy/triangular/lognormal) | 2 | ✅ merged+archived |
 | 10 | polynomial-package (polyval/fit/roots + cheb/leg/herm/herme/lag val + Polynomial class) | 2 | ✅ merged+archived |
 | 11 | text-io (savetxt/loadtxt/genfromtxt/fromstring/tofile/fromfile/binary_repr/base_repr) | 2 | ✅ merged+archived |
-| 12 | char-strings (numpy.char) | 2 | 🟡 next |
+| 12 | char-strings (numpy.char: add/multiply/upper/lower/strip/replace/find/count/startswith/endswith) | 2 | ✅ merged+archived |
+
+**Loop complete — all 12 Tier 1 + Tier 2 backlog capabilities delivered.** Suite: 421 cases / 1246 checks, 0 divergences. 1 bug found+fixed (#26).
 
 ## Bug log (oracle divergences → issues)
 | # | issue | capability | regression test | status |

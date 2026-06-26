@@ -23,6 +23,7 @@ add_library(numpp
     sorting/sorting.cpp
     sorting/sorting_extra.cpp
     strings/strings.cpp
+    strings/char.cpp
     datetime/datetime.cpp
     struct/struct.cpp
     backend/backend.cpp
