@@ -59,8 +59,18 @@ else()
 endif()
 
 # LAPACK backend (real vs null) — same weak-vtable model as BLAS.
-# GPU backend (CPU-reference 'device' vs null) — weak-vtable model.
-if(NUMPP_WITH_REFGPU)
+# GPU backend (real OpenCL vs CPU-reference 'device' vs null) — weak-vtable model.
+if(NUMPP_WITH_OPENCL)
+    target_sources(numpp PRIVATE backend/opencl_backend.cpp)
+    # Link the OpenCL ICD loader. Prefer a discovered library; fall back to the
+    # versioned soname so it works without the -dev symlink/headers.
+    find_library(NUMPP_OPENCL_LIB NAMES OpenCL)
+    if(NUMPP_OPENCL_LIB)
+        target_link_libraries(numpp PUBLIC ${NUMPP_OPENCL_LIB})
+    else()
+        target_link_options(numpp PUBLIC -l:libOpenCL.so.1)
+    endif()
+elseif(NUMPP_WITH_REFGPU)
     target_sources(numpp PRIVATE backend/refgpu_backend.cpp)
 else()
     target_sources(numpp PRIVATE backend/gpu_null.cpp)

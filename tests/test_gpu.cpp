@@ -28,7 +28,8 @@ TEST_CASE("gpu dispatch: device results equal CPU, last_backend correct") {
   CHECK(allclose(r_dev, r_cpu, 0.0, 0.0));     // device path is bitwise-equal to CPU
   CHECK((lb == Backend::Device || lb == Backend::Cpu));
   bool refgpu = (lb == Backend::Device);
-  std::fprintf(stderr, "  [gpu] device backend %s\n", refgpu ? "ACTIVE (refgpu)" : "absent (cpu-only build)");
+  std::fprintf(stderr, "  [gpu] device backend %s\n",
+               refgpu ? "ACTIVE (device path)" : "absent (cpu-only build)");
 
   // unary + reduction also route
   setenv("NUMPP_GPU_MIN", "100", 1);
