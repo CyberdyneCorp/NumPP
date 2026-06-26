@@ -15,8 +15,8 @@ PR/merge/archive. Durable tracker (survives context resets).
 | 6 | signal-poly (convolve/correlate/interp; polyval/polyfit/roots/poly/polyder/polyint) | 1 | ✅ merged+archived |
 | 7 | sorting-extras (lexsort/sort_complex/searchsorted-sorter) | 1 | ✅ merged+archived |
 | 8 | einsum (+tensordot/cross/cond/multi_dot) | 2 | ✅ merged+archived |
-| 9 | random-distributions (full set + Philox/SFC64) | 2 | 🟡 next |
-| 10 | polynomial-package (Polynomial/Chebyshev/...) | 2 | ⬜ |
+| 9 | random-distributions (laplace/logistic/gumbel/rayleigh/weibull/pareto/power/cauchy/triangular/lognormal) | 2 | ✅ merged+archived |
+| 10 | polynomial-package (Polynomial/Chebyshev/...) | 2 | 🟡 next |
 | 11 | text-io (savetxt/loadtxt/genfromtxt/print-options) | 2 | ⬜ |
 | 12 | char-strings (numpy.char) | 2 | ⬜ |
 

@@ -20,6 +20,7 @@
 #include "numpp/linalg/linalg.hpp"
 #include "numpp/fft/fft.hpp"
 #include "numpp/random/random.hpp"
+#include "numpp/random/distributions.hpp"
 #include "numpp/io/npy.hpp"
 #include "numpp/io/npz.hpp"
 #include "numpp/io/format.hpp"

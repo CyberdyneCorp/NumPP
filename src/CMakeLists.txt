@@ -14,6 +14,7 @@ add_library(numpp
     linalg/linalg.cpp
     fft/fft.cpp
     random/random.cpp
+    random/distributions.cpp
     io/npy.cpp
     io/npz.cpp
     io/format.cpp
