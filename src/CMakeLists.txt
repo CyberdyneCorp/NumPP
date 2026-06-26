@@ -17,6 +17,7 @@ add_library(numpp
     random/random.cpp
     random/distributions.cpp
     io/npy.cpp
+    textio/textio.cpp
     io/npz.cpp
     io/format.cpp
     sorting/sorting.cpp
