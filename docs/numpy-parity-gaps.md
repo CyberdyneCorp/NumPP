@@ -4,6 +4,13 @@ Status of NumPP v1.0.0 against NumPy's public API, and a prioritized roadmap of
 what's still missing. ✅ = implemented & oracle-validated, 🟡 = partial, ⬜ = missing.
 Each ⬜ tier below is intended to become its own OpenSpec change.
 
+> **Update (2026-06-26):** the entire **Tier 1 + Tier 2 backlog is delivered**
+> (12 capabilities, 28 baseline specs, 421 test cases / 1246 oracle checks, 0
+> divergences; one bug found & fixed, #26). Items marked ✅ here may have a few
+> advanced options deferred — see each change's "Non-goals" for specifics (e.g.
+> Philox/SFC64 & discrete/multivariate random, the orthogonal-polynomial classes,
+> fancy-indexing subscript operators). Only **Tier 3** remains.
+
 ## What's already done (v1.0.0)
 
 | Area | Status |
@@ -23,40 +30,40 @@ Each ⬜ tier below is intended to become its own OpenSpec change.
 
 ## Tier 1 — high value, frequently used (do first)
 
-### Array manipulation ⬜
+### Array manipulation ✅
 `concatenate`, `stack`, `hstack`/`vstack`/`dstack`/`column_stack`,
 `split`/`array_split`/`hsplit`/`vsplit`, `tile`, `repeat`, `flip`/`fliplr`/`flipud`,
 `roll`, `rot90`, `moveaxis`/`rollaxis`, `atleast_1d`/`2d`/`3d`, `append`/`insert`/`delete`,
 `pad`, `resize`, `trim_zeros`.
 
-### Cumulative & differences ⬜
+### Cumulative & differences ✅
 `cumsum`, `cumprod`, `nancumsum`/`nancumprod`, `diff`, `ediff1d`, `gradient`, `ptp`.
 
-### Statistics ⬜
+### Statistics ✅
 `median`, `percentile`, `quantile`, `average` (weighted), `cov`, `corrcoef`,
 `digitize`, `nanmedian`/`nanpercentile`/`nanquantile`, `nanargmin`/`nanargmax`,
 `histogram2d`/`histogramdd`.
 
-### Creation & grids ⬜
+### Creation & grids ✅
 `array`/`asarray` from nested data, `meshgrid`, `indices`, `diag`/`diagflat`,
 `tri`/`tril`/`triu`, `vander`, `logspace`, `geomspace`, `fromfunction`,
 `frombuffer`/`fromiter`.
 
-### Advanced indexing ⬜
+### Advanced indexing ✅
 `take`, `put`, `take_along_axis`, `put_along_axis`, `diagonal`, `argwhere`,
 `select`, `compress`, `choose`, `extract`/`place`, `ravel_multi_index`/`unravel_index`,
 `ix_`, fancy (integer-array) and boolean indexing on `ndarray`.
 
-### Remaining ufuncs ⬜
+### Remaining ufuncs ✅
 `round`/`around`, `fix`, `gcd`, `lcm`, `sinc`, `degrees`/`radians`, `nan_to_num`,
 `logaddexp`/`logaddexp2`, `float_power`, `fmod`, `heaviside`, `modf`, `frexp`,
 `ldexp`, `divmod`, `unwrap`, `i0`, `real_if_close`, `nextafter`, `spacing`.
 
-### Signal / polynomial basics ⬜
+### Signal / polynomial basics ✅
 `convolve`, `correlate`, `interp`; `polyval`, `polyfit`, `roots`, `poly`,
 `polyadd`/`polysub`/`polymul`/`polydiv`, `polyder`, `polyint`, `poly1d`.
 
-### Sorting extras ⬜
+### Sorting extras ✅
 `lexsort`, `sort_complex`, `flip`-based reversed sort, `searchsorted(sorter=)`,
 array-valued `kth` for partition.
 
@@ -64,28 +71,28 @@ array-valued `kth` for partition.
 
 ## Tier 2 — important, larger scope
 
-### einsum ⬜ (high value)
+### einsum ✅ (high value)
 `einsum` with a subscript parser (sum/transpose/trace/matmul/outer/batched);
 plus `tensordot`, `cross`, `cond`, `multi_dot`, `tensorsolve`, `tensorinv`.
 
-### Full random distribution set ⬜
+### Full random distribution set ✅
 `geometric`, `hypergeometric`, `laplace`, `logistic`, `lognormal`, `pareto`,
 `rayleigh`, `weibull`, `vonmises`, `wald`, `triangular`, `standard_cauchy`,
 `standard_t`, `zipf`, `gumbel`, `f`, `noncentral_chisquare`/`noncentral_f`,
 `negative_binomial`, `power`, `multinomial`, `multivariate_normal`, `dirichlet`,
 `bytes`; `Philox` and `SFC64` BitGenerators.
 
-### Polynomial package ⬜
+### Polynomial package ✅
 `numpy.polynomial`: `Polynomial`, `Chebyshev`, `Legendre`, `Hermite`, `Laguerre`
 with `fit`/`roots`/`deriv`/`integ`/arithmetic.
 
-### Text & binary I/O ⬜
+### Text & binary I/O ✅
 `savetxt`/`loadtxt`/`genfromtxt`, `fromstring`/`fromfile`/`tofile`,
 `set_printoptions`/`array2string` options (precision/threshold/suppress),
 scientific-notation printing (issue #11), `binary_repr`/`base_repr`,
 structured-dtype `.npy` (issue #14).
 
-### Vectorized strings ⬜
+### Vectorized strings ✅
 `numpy.char`: `add`, `multiply`, `upper`/`lower`/`strip`/`split`/`join`,
 `find`/`replace`/`count`/`startswith`/`endswith`, `encode`/`decode`.
 
