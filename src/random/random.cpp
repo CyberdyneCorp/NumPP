@@ -1,5 +1,8 @@
 #include "numpp/random/random.hpp"
 
+#include "ziggurat_constants.h"
+
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -96,24 +99,98 @@ ndarray Generator::permutation(const ndarray& a) {
   shuffle(c);
   return c;
 }
+namespace {
+// numpy _gen_mask: smallest 2^k - 1 >= v.
+inline uint64_t gen_mask(uint64_t v) {
+  v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v |= v >> 32;
+  return v;
+}
+}  // namespace
+
 ndarray Generator::choice(int64_t n, int64_t size, bool replace) {
   if (replace) return integers(0, n, Shape{size});
   if (size > n) throw value_error("choice: size larger than population without replacement");
-  ndarray perm = permutation(n);
-  return perm.index({IndexItem{Slice{0, size, 1}}}).copy();
+  ndarray out(Shape{size}, kInt64, Order::C);
+  int64_t* idx = size ? out.typed_data<int64_t>() : nullptr;
+  // numpy _shuffle_int: shuffle data[n-1..first] using Lemire bounded [0, i].
+  // bounded(range_excl=i+1) == numpy random_bounded_uint64(off=0, rng=i, use_masked=0).
+  auto shuffle_int = [this](int64_t nn, int64_t first, int64_t* data) {
+    for (int64_t i = nn - 1; i >= first; --i) {
+      int64_t j = static_cast<int64_t>(bounded(static_cast<uint64_t>(i) + 1));
+      std::swap(data[j], data[i]);
+    }
+  };
+  const int64_t cutoff = 50;  // shuffle=true default
+  if (n > 10000 && size > n / cutoff) {
+    // Tail-shuffle branch: shuffle arange(n)[n-size..], take the tail.
+    std::vector<int64_t> pool(n);
+    for (int64_t i = 0; i < n; ++i) pool[i] = i;
+    shuffle_int(n, std::max<int64_t>(n - size, 1), pool.data());
+    for (int64_t i = 0; i < size; ++i) idx[i] = pool[n - size + i];
+    return out;
+  }
+  // Floyd's algorithm with an open-addressed hash set.
+  uint64_t set_size = static_cast<uint64_t>(1.2 * static_cast<double>(size));
+  const uint64_t mask = gen_mask(set_size);
+  set_size = 1 + mask;
+  std::vector<uint64_t> hash_set(set_size, ~uint64_t{0});
+  for (int64_t j = n - size; j < n; ++j) {
+    const uint64_t val = bounded(static_cast<uint64_t>(j) + 1);  // [0, j]
+    uint64_t loc = val & mask;
+    while (hash_set[loc] != ~uint64_t{0} && hash_set[loc] != val) loc = (loc + 1) & mask;
+    if (hash_set[loc] == ~uint64_t{0}) {
+      hash_set[loc] = val;
+      idx[j - n + size] = static_cast<int64_t>(val);
+    } else {
+      loc = static_cast<uint64_t>(j) & mask;
+      while (hash_set[loc] != ~uint64_t{0}) loc = (loc + 1) & mask;
+      hash_set[loc] = static_cast<uint64_t>(j);
+      idx[j - n + size] = j;
+    }
+  }
+  shuffle_int(size, 1, idx);  // shuffle=true
+  return out;
 }
 
 // --- distributions (correct samplers; statistical parity only, issue #8) ---
 
-double Generator::next_gauss() {  // Marsaglia polar
-  if (has_gauss_) { has_gauss_ = false; return gauss_; }
-  double x1, x2, r2;
-  do { x1 = 2.0 * bit_.next_double() - 1.0; x2 = 2.0 * bit_.next_double() - 1.0; r2 = x1 * x1 + x2 * x2; } while (r2 >= 1.0 || r2 == 0.0);
-  double f = std::sqrt(-2.0 * std::log(r2) / r2);
-  gauss_ = x1 * f; has_gauss_ = true;
-  return x2 * f;
+double Generator::next_gauss() {  // numpy ziggurat (random_standard_normal), bit-exact
+  using namespace zig;
+  for (;;) {
+    uint64_t r = bit_.next64();
+    const int idx = static_cast<int>(r & 0xff);
+    r >>= 8;
+    const int sign = static_cast<int>(r & 0x1);
+    const uint64_t rabs = (r >> 1) & 0x000fffffffffffffULL;
+    double x = static_cast<double>(rabs) * wi_double[idx];
+    if (sign & 0x1) x = -x;
+    if (rabs < ki_double[idx]) return x;  // ~99.3% fast path
+    if (idx == 0) {
+      for (;;) {
+        const double xx = -ziggurat_nor_inv_r * std::log1p(-bit_.next_double());
+        const double yy = -std::log1p(-bit_.next_double());
+        if (yy + yy > xx * xx)
+          return ((rabs >> 8) & 0x1) ? -(ziggurat_nor_r + xx) : ziggurat_nor_r + xx;
+      }
+    }
+    if (((fi_double[idx - 1] - fi_double[idx]) * bit_.next_double() + fi_double[idx]) < std::exp(-0.5 * x * x))
+      return x;
+  }
 }
-double Generator::next_exponential() { return -std::log1p(-bit_.next_double()); }
+double Generator::next_exponential() {  // numpy ziggurat (random_standard_exponential), bit-exact
+  using namespace zig;
+  for (;;) {
+    uint64_t ri = bit_.next64();
+    ri >>= 3;
+    const uint8_t idx = static_cast<uint8_t>(ri & 0xFF);
+    ri >>= 8;
+    const double x = static_cast<double>(ri) * we_double[idx];
+    if (ri < ke_double[idx]) return x;  // ~98.9% fast path
+    if (idx == 0) return ziggurat_exp_r - std::log1p(-bit_.next_double());
+    if ((fe_double[idx - 1] - fe_double[idx]) * bit_.next_double() + fe_double[idx] < std::exp(-x)) return x;
+    // else: redraw (numpy recurses into random_standard_exponential)
+  }
+}
 
 double Generator::next_std_gamma(double shape) {  // Marsaglia-Tsang
   if (shape < 1.0) return next_std_gamma(shape + 1.0) * std::pow(bit_.next_double(), 1.0 / shape);
