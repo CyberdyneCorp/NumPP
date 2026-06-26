@@ -22,6 +22,12 @@ add_library(numpp
     fft/fft.cpp
     random/random.cpp
     random/distributions.cpp
+    random/distributions2.cpp
+    random/bitgenerators.cpp
+    polynomial/orthopoly.cpp
+    strings/char_extra.cpp
+    io/printopts.cpp
+    lib/striding.cpp
     io/npy.cpp
     textio/textio.cpp
     io/npz.cpp

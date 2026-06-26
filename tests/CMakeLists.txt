@@ -13,6 +13,12 @@ add_executable(numpp_tests
     test_typecheck.cpp
     test_poly.cpp
     test_poly1d.cpp
+    test_distributions2.cpp
+    test_bitgenerators.cpp
+    test_orthopoly.cpp
+    test_char_extra.cpp
+    test_printopts.cpp
+    test_striding.cpp
     test_tensor.cpp
     test_polynomial.cpp
     test_textio.cpp
