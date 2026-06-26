@@ -24,6 +24,12 @@ within floating-point tolerance (~1e-10) — device FMA contraction makes it acc
 but not bit-identical (unlike the IEEE-exact element-wise ops). Validated on the
 RTX 5060 via both CUDA and OpenCL.
 
+GEMM uses a **16×16 shared-memory tiled kernel**, and all device allocations are
+served from a **reuse pool** (no per-call `cudaMalloc`/`clCreateBuffer`). Measured
+on an RTX 5060 (fp64), GPU matmul is **5–8× faster than the CPU path**, reaching
+~109 GFLOP/s at 1024³. (Host↔device copies still happen per call; true
+device-resident arrays and a cuBLAS/clBLAST path are future work.)
+
 ## OpenCL backend
 
 Validated on an NVIDIA GeForce RTX 5060 (fp64 supported). Arithmetic and `sqrt`
