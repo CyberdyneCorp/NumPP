@@ -4,11 +4,17 @@ add_library(numpp
     core/ndarray.cpp
     core/creation.cpp
     manip/manip.cpp
+    manip/manip_extra.cpp
     stats/stats.cpp
+    stats/stats_extra.cpp
     grids/grids.cpp
+    construct/construct.cpp
     indexing/indexing.cpp
+    indexing/indexing_extra.cpp
     mathx/mathx.cpp
+    mathx/typecheck.cpp
     poly/poly.cpp
+    poly/poly1d.cpp
     polynomial/polynomial.cpp
     tensor/tensor.cpp
     umath/ufunc.cpp

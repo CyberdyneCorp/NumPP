@@ -2,11 +2,17 @@ add_executable(numpp_tests
     main.cpp
     test_dtype.cpp
     test_manip.cpp
+    test_manip_extra.cpp
     test_stats.cpp
+    test_stats_extra.cpp
     test_grids.cpp
+    test_construct.cpp
     test_indexing.cpp
+    test_indexing_extra.cpp
     test_mathx.cpp
+    test_typecheck.cpp
     test_poly.cpp
+    test_poly1d.cpp
     test_tensor.cpp
     test_polynomial.cpp
     test_textio.cpp
