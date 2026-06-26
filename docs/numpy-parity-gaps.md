@@ -192,10 +192,10 @@ NVIDIA RTX 5060 (sm_120): float32/64 add/sub/mul/div/neg/sqrt + sum/prod +
 **GEMM/matmul** on the GPU (CUDA via PTX-virtual JIT). Deferred: Metal/Vulkan,
 device-resident buffers / async transfer, tiled GEMM, Auto-routed matmul.
 
-### add-bitexact-longtail ⬜
-The tracked bit-exact items: `choice(replace=False)` (#7), ziggurat normal/
-exponential (#8), standalone `MT19937` stream (#9), and **Philox (#36)** — all
-deep numpy-internal reverse-engineering.
+### add-bitexact-longtail 🟡
+**Philox (#36)** and standalone **MT19937 (#9)** are now bit-exact with numpy
+(joining PCG64 and SFC64). Remaining: `choice(replace=False)` (#7) and the
+ziggurat normal/exponential (#8) — distinct numpy-internal algorithms.
 
 ### add-interop-misc ⬜
 `memmap`, DEFLATE `savez_compressed`, DLPack / array-API (`__dlpack__`/
@@ -205,14 +205,13 @@ deep numpy-internal reverse-engineering.
 
 ## What's left (post Tier A/B/C)
 
-NumPP covers the full practical NumPy surface plus real GPU backends. Only two
-backlog items remain unstarted, both deferred with rationale:
-- **add-bitexact-longtail** — bit-exact parity for numpy's internal RNG
-  algorithms (Philox #36, ziggurat #8, choice-without-replacement #7, MT19937 #9).
-  Pure reverse-engineering, no deps; the hardest remaining work.
-- **add-interop-misc** — memmap, compressed npz, DLPack/array-API, ctypeslib,
-  FFTW. Mostly external dependencies that conflict with the no-dependency,
-  iOS/Android-portable goal; pick individually as needed.
+NumPP covers the full practical NumPy surface plus real GPU backends. What's left:
+- **add-bitexact-longtail** (partial) — bit-exact RNG parity. PCG64, SFC64,
+  **Philox (#36)** and **MT19937 (#9)** are done; only `choice(replace=False)`
+  (#7) and the ziggurat normal/exp (#8) remain. Pure reverse-engineering, no deps.
+- **add-interop-misc** (not started) — memmap, compressed npz, DLPack/array-API,
+  ctypeslib, FFTW. Mostly external dependencies that conflict with the
+  no-dependency, iOS/Android-portable goal; pick individually as needed.
 
 Plus the advanced sub-items deferred inside delivered changes (see each change's
 Non-goals): masked-array operators, object dtype, Metal/Vulkan + tiled/device GEMM,
