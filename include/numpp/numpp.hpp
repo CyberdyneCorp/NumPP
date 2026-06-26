@@ -29,6 +29,7 @@
 #include "numpp/sorting/sorting.hpp"
 #include "numpp/sorting/sorting_extra.hpp"
 #include "numpp/strings/strings.hpp"
+#include "numpp/strings/char.hpp"
 #include "numpp/datetime/datetime.hpp"
 #include "numpp/struct/struct.hpp"
 #include "numpp/backend/backend.hpp"
