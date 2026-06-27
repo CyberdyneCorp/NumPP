@@ -165,6 +165,21 @@ TEST_CASE("mined: SVD resolves a true-zero singular value (regression #74)") {
   CHECK(s.item<double>({2}) < 1e-10);
 }
 
+// ---- complex SVD relative accuracy on a true-zero singular value (#74) ----
+TEST_CASE("mined: complex SVD resolves a true-zero singular value (#74)") {
+  // row2 = (1+1j)*row1 -> rank 2; the smallest singular value is ~0.
+  ndarray A = cmat(3, 3, {cd(1, 1), cd(2, -1), cd(0, 3),
+                          cd(0, 2), cd(3, 1), cd(-3, 3),
+                          cd(1, 0), cd(2, 0), cd(3, 0)});
+  ndarray s = linalg::svdvals(A);
+  CHECK(s.item<double>({2}) < 1e-10);  // Gram/A^H A left this at ~1e-8
+  CHECK(linalg::matrix_rank(A).item<int64_t>({}) == 2);
+  auto o = npt::oracle(
+      "A=np.array([[1+1j,2-1j,3j],[2j,3+1j,-3+3j],[1,2,3]]); "
+      "a=np.array(np.linalg.matrix_rank(A))");
+  if (o) CHECK(allclose(linalg::matrix_rank(A), *o, 0, 0, true));
+}
+
 // ---- matrix_rank (numpy TestMatrixRank) ----
 TEST_CASE("mined: matrix_rank of a rank-deficient matrix vs numpy") {
   ndarray A = rmat(3, 3, {1, 2, 3, 2, 4, 6, 1, 0, 0});  // row2 = 2*row1 -> rank 2
