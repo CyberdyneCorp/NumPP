@@ -11,6 +11,18 @@ namespace numpp {
 // General Einstein summation, e.g. "ij,jk->ik", "ii->i", "ij->ji", "i,i->".
 NUMPP_API ndarray einsum(const std::string& subscripts, const std::vector<ndarray>& operands);
 
+// As above, but when `optimize` is true the contraction is evaluated as a greedy
+// sequence of pairwise contractions (numpy einsum optimize=). The result equals
+// the unoptimized result within floating-point tolerance.
+NUMPP_API ndarray einsum(const std::string& subscripts, const std::vector<ndarray>& operands,
+                         bool optimize);
+
+// The greedy pairwise contraction order chosen for `subscripts`/`operands`: each
+// entry is the pair of positions (in the then-current operand list) contracted at
+// that step (numpy.einsum_path's core list).
+NUMPP_API std::vector<std::vector<int64_t>> einsum_path(const std::string& subscripts,
+                                                        const std::vector<ndarray>& operands);
+
 // Tensor dot product over the given axes (or last `n` of a with first `n` of b).
 NUMPP_API ndarray tensordot(const ndarray& a, const ndarray& b, int64_t n = 2);
 NUMPP_API ndarray tensordot(const ndarray& a, const ndarray& b,

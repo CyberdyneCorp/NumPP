@@ -107,6 +107,90 @@ ndarray einsum(const std::string& subscripts, const std::vector<ndarray>& operan
   return out;
 }
 
+namespace {
+
+// Labels that must survive when contracting the pair (i,j): anything in the
+// final output, or in any other still-present term.
+std::string survivors(const std::vector<std::string>& labels, const std::string& out_labels,
+                      size_t i, size_t j) {
+  std::string keep = out_labels;
+  for (size_t k = 0; k < labels.size(); ++k)
+    if (k != i && k != j) keep += labels[k];
+  return keep;
+}
+
+// Ordered, de-duplicated labels of the pair (i,j) that are in `keep`.
+std::string pair_result_labels(const std::string& a, const std::string& b, const std::string& keep) {
+  std::string c;
+  for (char ch : a + b)
+    if (keep.find(ch) != std::string::npos && c.find(ch) == std::string::npos) c += ch;
+  return c;
+}
+
+int64_t labels_size(const std::string& labels, const std::array<int64_t, 128>& size) {
+  int64_t n = 1;
+  for (char c : labels) n *= size[static_cast<unsigned char>(c)];
+  return n;
+}
+
+// Greedy pairwise contraction: repeatedly contract the pair whose intermediate
+// is smallest, reusing the base einsum for each 1- or 2-operand step. Records the
+// chosen (position-i, position-j) pairs into `path` when non-null.
+ndarray einsum_greedy(const EinsumPlan& p, std::vector<ndarray> arrs,
+                      std::vector<std::vector<int64_t>>* path) {
+  std::vector<std::string> labels = p.in_labels;
+  const std::string& out = p.out_labels;
+
+  if (arrs.size() == 1)
+    return einsum(labels[0] + "->" + out, {arrs[0]});
+
+  while (arrs.size() > 2) {
+    size_t bi = 0, bj = 1;
+    int64_t best = -1;
+    std::string best_c;
+    for (size_t i = 0; i < arrs.size(); ++i)
+      for (size_t j = i + 1; j < arrs.size(); ++j) {
+        const std::string keep = survivors(labels, out, i, j);
+        const std::string c = pair_result_labels(labels[i], labels[j], keep);
+        const int64_t sz = labels_size(c, p.size);
+        if (best == -1 || sz < best) { best = sz; bi = i; bj = j; best_c = c; }
+      }
+    ndarray inter = einsum(labels[bi] + "," + labels[bj] + "->" + best_c, {arrs[bi], arrs[bj]});
+    if (path) path->push_back({static_cast<int64_t>(bi), static_cast<int64_t>(bj)});
+    arrs.erase(arrs.begin() + static_cast<std::ptrdiff_t>(bj));
+    arrs.erase(arrs.begin() + static_cast<std::ptrdiff_t>(bi));
+    labels.erase(labels.begin() + static_cast<std::ptrdiff_t>(bj));
+    labels.erase(labels.begin() + static_cast<std::ptrdiff_t>(bi));
+    arrs.push_back(inter);
+    labels.push_back(best_c);
+  }
+
+  if (path) path->push_back({0, 1});
+  return einsum(labels[0] + "," + labels[1] + "->" + out, {arrs[0], arrs[1]});
+}
+
+}  // namespace
+
+ndarray einsum(const std::string& subscripts, const std::vector<ndarray>& operands, bool optimize) {
+  if (!optimize) return einsum(subscripts, operands);
+  EinsumPlan p = parse_einsum(subscripts, operands);
+  std::vector<ndarray> ops;
+  ops.reserve(operands.size());
+  for (const auto& o : operands) ops.push_back(o.astype(kFloat64));
+  return einsum_greedy(p, ops, nullptr);
+}
+
+std::vector<std::vector<int64_t>> einsum_path(const std::string& subscripts,
+                                              const std::vector<ndarray>& operands) {
+  EinsumPlan p = parse_einsum(subscripts, operands);
+  std::vector<ndarray> ops;
+  ops.reserve(operands.size());
+  for (const auto& o : operands) ops.push_back(o.astype(kFloat64));
+  std::vector<std::vector<int64_t>> path;
+  einsum_greedy(p, ops, &path);
+  return path;
+}
+
 ndarray tensordot(const ndarray& a, const ndarray& b,
                   const std::vector<int64_t>& axes_a, const std::vector<int64_t>& axes_b) {
   std::vector<int64_t> free_a, free_b;
