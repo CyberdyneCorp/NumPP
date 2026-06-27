@@ -70,6 +70,7 @@ add_executable(numpp_tests
     test_memmap.cpp
     test_masked_arith.cpp
     test_masked_reduce.cpp
+    test_masked_hardsoft.cpp
     test_struct.cpp
     test_gpu.cpp
     test_nanreduce.cpp
