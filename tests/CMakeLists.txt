@@ -57,6 +57,7 @@ add_executable(numpp_tests
     test_multiarray_mined3.cpp
     test_multiarray_mined4.cpp
     test_nanfunctions_mined.cpp
+    test_nanfunctions_mined2.cpp
     test_ufunc2.cpp
     test_ufunc3.cpp
     test_linalg.cpp

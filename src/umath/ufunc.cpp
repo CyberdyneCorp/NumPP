@@ -679,7 +679,10 @@ ndarray nanvar(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int
   ndarray ssum = sum(dev, axis, keepdims);
   ndarray denom = subtract(keepdims ? cnt : sum(logical_not(isn), axis, false).astype(kFloat64),
                            scalar_like(static_cast<double>(ddof), kFloat64, true));
-  return divide(ssum, denom);
+  ndarray result = divide(ssum, denom);
+  // numpy: degrees of freedom <= 0 (ddof >= non-NaN count) -> nan
+  return where(less_equal(denom, zeros_like(denom)),
+               full_like(result, std::numeric_limits<double>::quiet_NaN()), result);
 }
 ndarray nanstd(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
   return sqrt(nanvar(a, axis, keepdims, ddof));
