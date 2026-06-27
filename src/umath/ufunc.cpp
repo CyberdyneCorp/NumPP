@@ -104,7 +104,7 @@ T bin_scalar(BinOp op, T x, T y) {
       case BinOp::Mul: return static_cast<T>(x * y);
       case BinOp::Div: return static_cast<T>(x / y);
       case BinOp::FloorDiv: return int_floordiv<T>(x, y);
-      case BinOp::Mod: return static_cast<T>(x - int_floordiv<T>(x, y) * y);
+      case BinOp::Mod: return y == 0 ? T(0) : static_cast<T>(x - int_floordiv<T>(x, y) * y);  // numpy: int %0 -> 0
       case BinOp::Power:
         if constexpr (std::is_signed_v<T>) {
           if (y < 0) throw value_error("Integers to negative integer powers are not allowed.");
