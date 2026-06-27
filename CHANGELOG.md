@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.4 — 2026-06-27 — test_umath.py mining: ufunc special-value fixes
+
+Mines NumPy's own `numpy/_core/tests/test_umath.py` by replaying special-value
+input sets (±inf, nan, ±0) through the ufuncs against the live-NumPy oracle —
+unary/binary special values, integer division/remainder (signs + by-zero),
+`float_power`, bitwise ufuncs, NaN comparisons, complex branch cuts (generic
+off-cut inputs), and real inverse-function domain edges. **824 cases / 2243 checks,
+0 divergences.** Two real bugs found and fixed:
+
+- **`sign(nan)` now returns `nan`** (was `0`). The real-floating kernel computed
+  `(x>0)-(x<0)`, which is `0` for NaN; numpy returns `nan`. (#81)
+- **Integer remainder by zero now returns `0`** (was the dividend). `Mod` computed
+  `x - floordiv(x,0)*0 = x`; numpy returns `0`. `floor_divide` already matched. (#83)
+
+(Complex transcendentals on branch cuts / signed zeros are implementation-defined —
+numpy's npymath and platform libc++ disagree — so those exact points are excluded,
+matching numpy's own platform xfails.)
+
 ## 1.3.2 — 2026-06-27 — cond(p) + comprehensive test_linalg.py mining
 
 Completes mining of NumPy's own `numpy/linalg/tests/test_linalg.py` through the
