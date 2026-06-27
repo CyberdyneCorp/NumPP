@@ -182,13 +182,26 @@ ndarray digitize(const ndarray& x, const ndarray& bins, bool right) {
   return searchsorted(bins, x, right ? "left" : "right");
 }
 
+namespace {
+// numpy.nanargmin/nanargmax raise ValueError if any reduced slice is all-NaN.
+void require_some_non_nan(const ndarray& isn, std::optional<int64_t> axis) {
+  ndarray cnt = sum(logical_not(isn), axis);  // count of non-NaN per reduced slice
+  if (any(equal(cnt, zeros_like(cnt))).item<bool>({}))
+    throw value_error("All-NaN slice encountered");
+}
+}  // namespace
+
 ndarray nanargmin(const ndarray& a, std::optional<int64_t> axis) {
+  ndarray isn = isnan(a);
+  require_some_non_nan(isn, axis);
   const double inf = std::numeric_limits<double>::infinity();
-  return argmin(where(isnan(a), full(a.shape(), inf, kFloat64), a.astype(kFloat64)), axis);
+  return argmin(where(isn, full(a.shape(), inf, kFloat64), a.astype(kFloat64)), axis);
 }
 ndarray nanargmax(const ndarray& a, std::optional<int64_t> axis) {
+  ndarray isn = isnan(a);
+  require_some_non_nan(isn, axis);
   const double inf = std::numeric_limits<double>::infinity();
-  return argmax(where(isnan(a), full(a.shape(), -inf, kFloat64), a.astype(kFloat64)), axis);
+  return argmax(where(isn, full(a.shape(), -inf, kFloat64), a.astype(kFloat64)), axis);
 }
 
 }  // namespace numpp
