@@ -2,6 +2,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "numpp/core/ndarray.hpp"
 #include "numpp/export.hpp"
@@ -48,6 +49,12 @@ NUMPP_API ndarray svdvals(const ndarray& a);                 // singular values,
 NUMPP_API ndarray pinv(const ndarray& a, double rcond = 1e-15);
 NUMPP_API ndarray matrix_rank(const ndarray& a);
 NUMPP_API LstsqResult lstsq(const ndarray& a, const ndarray& b, double rcond = -1.0);
+
+// numpy.linalg.tensorsolve / tensorinv: solve a x = b / invert a tensor by
+// reshaping the chosen axes into a square matrix.
+NUMPP_API ndarray tensorsolve(const ndarray& a, const ndarray& b,
+                              const std::vector<int64_t>& axes = {});
+NUMPP_API ndarray tensorinv(const ndarray& a, int64_t ind = 2);
 
 // Norms. Default: 2-norm (vector) / Frobenius (matrix). String ords: "fro","nuc".
 NUMPP_API ndarray norm(const ndarray& a);
