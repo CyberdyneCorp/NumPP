@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -349,13 +350,48 @@ ndarray cross(const ndarray& a, const ndarray& b) {
   return out;
 }
 
+namespace {
+ndarray cond_scalar(double v) {
+  ndarray o = zeros({}, kFloat64);
+  o.set_item<double>({}, v);
+  return o;
+}
+// Condition number via norm(A,p) * norm(inv(A),p); inf when A is singular.
+ndarray cond_via_norm(const ndarray& a, double dp, const std::string& sp, bool use_string) {
+  try {
+    ndarray inva = linalg::inv(a);
+    double na = use_string ? linalg::norm(a, sp).item<double>({}) : linalg::norm(a, dp).item<double>({});
+    double ni = use_string ? linalg::norm(inva, sp).item<double>({}) : linalg::norm(inva, dp).item<double>({});
+    return cond_scalar(na * ni);
+  } catch (const linalg_error&) {
+    return cond_scalar(std::numeric_limits<double>::infinity());
+  }
+}
+}  // namespace
+
 ndarray cond(const ndarray& a) {
   ndarray s = linalg::svdvals(a.astype(kFloat64)).ascontiguousarray();  // descending
   const int64_t n = s.size();
   const double* p = n ? s.typed_data<double>() : nullptr;
-  ndarray out = zeros({}, kFloat64);
-  out.set_item<double>({}, n ? p[0] / p[n - 1] : 0.0);
-  return out;
+  // Singular (smallest singular value 0) -> infinite condition number (numpy).
+  return cond_scalar((n && p[n - 1] > 0.0) ? p[0] / p[n - 1]
+                                           : (n ? std::numeric_limits<double>::infinity() : 0.0));
+}
+
+ndarray cond(const ndarray& a, double p) {
+  ndarray af = a.astype(kFloat64);
+  if (p == 2.0) return cond(af);
+  if (p == -2.0) {
+    ndarray s = linalg::svdvals(af).ascontiguousarray();
+    const int64_t n = s.size();
+    const double* sp = n ? s.typed_data<double>() : nullptr;
+    return cond_scalar((n && sp[0] > 0.0) ? sp[n - 1] / sp[0] : 0.0);
+  }
+  return cond_via_norm(af, p, "", false);  // 1, -1, +/-inf
+}
+
+ndarray cond(const ndarray& a, const std::string& p) {
+  return cond_via_norm(a.astype(kFloat64), 0.0, p, true);  // "fro"
 }
 
 ndarray multi_dot(const std::vector<ndarray>& arrays) {
