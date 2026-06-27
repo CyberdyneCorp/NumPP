@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <vector>
 
 namespace numpp {
@@ -214,18 +215,31 @@ ndarray roots(const ndarray& p) {
   int64_t trailing = 0;
   while (c.size() > 1 && c.back() == 0.0) { c.pop_back(); ++trailing; }
   const int64_t N = static_cast<int64_t>(c.size()) - 1;
-  std::vector<double> finite_roots;  // companion-matrix eigenvalues
+  std::vector<double> re, im;  // companion-matrix eigenvalues (real/imag parts)
   if (N >= 1) {
     ndarray comp = zeros({N, N}, kFloat64);
     for (int64_t j = 0; j < N; ++j) comp.set_item<double>({0, j}, -c[j + 1] / c[0]);
     for (int64_t i = 1; i < N; ++i) comp.set_item<double>({i, i - 1}, 1.0);
     ndarray ev = linalg::eigvals(comp);  // complex128
     ndarray evr = real(ev).astype(kFloat64).ascontiguousarray();
-    const double* pe = evr.size() ? evr.typed_data<double>() : nullptr;
-    for (int64_t i = 0; i < evr.size(); ++i) finite_roots.push_back(pe[i]);
+    ndarray evi = imag(ev).astype(kFloat64).ascontiguousarray();
+    const double* pr = evr.size() ? evr.typed_data<double>() : nullptr;
+    const double* pi = evi.size() ? evi.typed_data<double>() : nullptr;
+    for (int64_t i = 0; i < evr.size(); ++i) { re.push_back(pr[i]); im.push_back(pi[i]); }
   }
-  for (int64_t i = 0; i < trailing; ++i) finite_roots.push_back(0.0);
-  return from_vec(finite_roots);
+  for (int64_t i = 0; i < trailing; ++i) { re.push_back(0.0); im.push_back(0.0); }
+  // numpy.roots returns a real array when every root is real, and a complex128
+  // array otherwise — preserve the imaginary parts of complex-conjugate roots.
+  double maxabs = 0.0, maxim = 0.0;
+  for (size_t i = 0; i < re.size(); ++i) {
+    maxabs = std::max(maxabs, std::abs(re[i]));
+    maxim = std::max(maxim, std::abs(im[i]));
+  }
+  if (maxim <= 1e-12 * (1.0 + maxabs)) return from_vec(re);
+  ndarray o({static_cast<int64_t>(re.size())}, kComplex128, Order::C);
+  for (size_t i = 0; i < re.size(); ++i)
+    o.typed_data<std::complex<double>>()[i] = {re[i], im[i]};
+  return o;
 }
 
 ndarray polyfit(const ndarray& x, const ndarray& y, int64_t deg) {
