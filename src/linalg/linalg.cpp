@@ -9,6 +9,7 @@
 #include "numpp/backend/backend.hpp"
 #include "numpp/backend/lapack_vtable.hpp"
 #include "numpp/core/creation.hpp"
+#include "numpp/linalg/batched.hpp"
 #include "numpp/umath/ufunc.hpp"
 
 namespace numpp {
@@ -365,6 +366,7 @@ ndarray kron(const ndarray& a, const ndarray& b) {
 namespace linalg {
 
 ndarray solve(const ndarray& a, const ndarray& b) {
+  if (a.ndim() > 2) return batched::solve(a, b);
   require_square(a);
   Kind k = la_kind(result_type(a.dtype(), b.dtype()));
   // Accelerated path: route through LAPACK gesv when a backend is linked and the
@@ -382,12 +384,14 @@ ndarray solve(const ndarray& a, const ndarray& b) {
   return solve_impl<double>(a, b, k);
 }
 ndarray inv(const ndarray& a) {
+  if (a.ndim() > 2) return batched::inv(a);
   require_square(a);
   return dispatch(a.dtype(), [&](auto tag, Kind k) {
     using T = decltype(tag); return inv_impl<T>(a, k);
   });
 }
 ndarray det(const ndarray& a) {
+  if (a.ndim() > 2) return batched::det(a);
   require_square(a);
   return dispatch(a.dtype(), [&](auto tag, Kind k) -> ndarray {
     using T = decltype(tag);
@@ -402,6 +406,7 @@ ndarray det(const ndarray& a) {
   });
 }
 SignLogDet slogdet(const ndarray& a) {
+  if (a.ndim() > 2) return batched::slogdet(a);
   require_square(a);
   SignLogDet out;
   dispatch(a.dtype(), [&](auto tag, Kind kk) -> ndarray {
@@ -433,6 +438,7 @@ SignLogDet slogdet(const ndarray& a) {
   return out;
 }
 ndarray matrix_power(const ndarray& a, int64_t n) {
+  if (a.ndim() > 2) return batched::matrix_power(a, n);
   require_square(a);
   const int64_t d = a.shape()[0];
   if (n == 0) return eye(d, d, 0, la_kind(a.dtype()).out);
@@ -447,6 +453,7 @@ ndarray matrix_power(const ndarray& a, int64_t n) {
   return result;
 }
 ndarray cholesky(const ndarray& a) {
+  if (a.ndim() > 2) return batched::cholesky(a);
   require_square(a);
   return dispatch(a.dtype(), [&](auto tag, Kind k) {
     using T = decltype(tag); return cholesky_impl<T>(a, k);
@@ -465,6 +472,7 @@ QRResult qr_impl(const ndarray& a, bool complete, Kind k) {
   return out;
 }
 QRResult qr(const ndarray& a, const std::string& mode) {
+  if (a.ndim() > 2) return batched::qr(a, mode);
   if (a.ndim() != 2) throw not_implemented_error("qr requires a 2-D array");
   if (mode != "reduced" && mode != "complete") throw value_error("qr mode must be 'reduced' or 'complete'");
   Kind k = la_kind(a.dtype());
@@ -513,6 +521,7 @@ ndarray real_evals(const std::vector<double>& eval, DType real_out) {
 }  // namespace
 
 ndarray eigvalsh(const ndarray& a) {
+  if (a.ndim() > 2) return batched::eigvalsh(a);
   require_square(a);
   Kind k = la_kind(a.dtype());
   std::vector<double> eval;
@@ -521,6 +530,7 @@ ndarray eigvalsh(const ndarray& a) {
   return real_evals(eval, real_out);
 }
 EighResult eigh(const ndarray& a) {
+  if (a.ndim() > 2) return batched::eigh(a);
   require_square(a);
   Kind k = la_kind(a.dtype());
   std::vector<double> eval; ndarray evec;
@@ -539,6 +549,7 @@ bool eig_is_real(const ndarray& a, const std::vector<cd>& w) {
 }  // namespace
 
 ndarray eigvals(const ndarray& a) {
+  if (a.ndim() > 2) return batched::eigvals(a);
   require_square(a);
   const int n = static_cast<int>(a.shape()[0]);
   std::vector<cd> A = to_vec<cd>(a, kComplex128);
@@ -550,6 +561,7 @@ ndarray eigvals(const ndarray& a) {
 }
 
 EigResult eig(const ndarray& a) {
+  if (a.ndim() > 2) return batched::eig(a);
   require_square(a);
   const int n = static_cast<int>(a.shape()[0]);
   std::vector<cd> A = to_vec<cd>(a, kComplex128);
@@ -650,6 +662,7 @@ double dtype_eps(DType d) { return (d == kFloat32) ? 1.1920928955078125e-7 : 2.2
 }  // namespace
 
 SVDResult svd(const ndarray& a, bool full_matrices) {
+  if (a.ndim() > 2) return batched::svd(a, full_matrices);
   if (a.ndim() != 2) throw not_implemented_error("svd requires a 2-D array");
   Kind k = la_kind(a.dtype());
   if (k.cmplx) return svd_impl<std::complex<double>>(a, full_matrices, k);
@@ -658,6 +671,7 @@ SVDResult svd(const ndarray& a, bool full_matrices) {
 ndarray svdvals(const ndarray& a) { return svd(a, false).s; }
 
 ndarray pinv(const ndarray& a, double rcond) {
+  if (a.ndim() > 2) return batched::pinv(a, rcond);
   SVDResult r = svd(a, /*full_matrices=*/false);
   const int64_t kk = r.s.shape()[0];
   ndarray smax = amax(r.s);
@@ -673,6 +687,7 @@ ndarray pinv(const ndarray& a, double rcond) {
 }
 
 ndarray matrix_rank(const ndarray& a) {
+  if (a.ndim() > 2) return batched::matrix_rank(a);
   ndarray s = svdvals(a).astype(kFloat64);
   const int64_t kk = s.shape()[0];
   double smax = kk ? amax(s).item<double>({}) : 0.0;
