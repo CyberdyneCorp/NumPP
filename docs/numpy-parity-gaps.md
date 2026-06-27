@@ -1,17 +1,22 @@
 # NumPy → NumPP parity gaps & roadmap
 
-Status of NumPP v1.0.0 against NumPy's public API, and a prioritized roadmap of
+Status of NumPP against NumPy's public API, and a prioritized roadmap of
 what's still missing. ✅ = implemented & oracle-validated, 🟡 = partial, ⬜ = missing.
 Each ⬜ tier below is intended to become its own OpenSpec change.
 
-> **Update (2026-06-26):** **Tiers 1, 2, A, B and most of C are delivered** — 44
-> baseline capabilities, **626 test cases / 1779 oracle checks, 0 failures**, plus
-> **real OpenCL + CUDA GPU backends (incl. GPU matmul)** validated on an RTX 5060.
-> Bugs found & fixed: #26 (spacing), legint(m=2); open/tracked: #36 (Philox not
-> bit-exact; SFC64 is). Items marked ✅ may have advanced options deferred (see
-> each change's "Non-goals"). **Remaining backlog: just `add-bitexact-longtail`
-> and `add-interop-misc`** (both deferred with rationale) plus assorted advanced
-> sub-items.
+> **Update (2026-06-27, v1.1.0):** **Tiers 1, 2, A, B and C are all delivered** —
+> 45 baseline capabilities, **1861 oracle checks across 649 cases vs NumPy 2.1.3,
+> 0 divergences**, plus **real OpenCL + CUDA GPU backends with tiled GEMM**
+> validated on an RTX 5060, bit-exact RNG (PCG64/SFC64/Philox/MT19937 + ziggurat +
+> `choice(replace=False)`), masked arrays, and DLPack + memmap interop. Bugs found
+> & fixed across the build-out: #26 (spacing), legint(m=2), a CI `<algorithm>`
+> include; bit-exact gaps #7/#8/#9/#36 all closed. The full roadmap to date is
+> **complete**.
+>
+> What remains is the genuine NumPy long-tail, grouped below by *why* it's missing
+> (§"What's left"). Only **Bucket C** (portable, no-dependency, charter-compatible)
+> is active work; Buckets A (needs a Python runtime/object model) and B (needs an
+> external dependency) are deferred by design.
 
 ## What's already done (v1.0.0)
 
@@ -144,18 +149,17 @@ Integer-array and boolean **fancy indexing on the `ndarray` subscript operator**
 ### add-random-discrete-multivariate ✅
 `geometric`, `zipf`, `logseries`, `negative_binomial`, `multinomial`,
 `multivariate_normal`, `dirichlet`, `vonmises`, `wald`, `standard_t`, `f`,
-`noncentral_chisquare`. Deferred: `hypergeometric`, `noncentral_f`, `bytes`.
+`noncentral_chisquare`, `hypergeometric`, `noncentral_f`. (`bytes` shipped too.)
 
-### add-bitgenerators 🟡
-`SFC64` ✅ (bit-exact). `Philox` 🟡 (deterministic; numpy bit-exactness tracked
-in **#36**). Deferred: standalone bit-exact `MT19937` (#9), `SeedSequence`
-spawning, `bit_generator.state` get/set.
+### add-bitgenerators ✅
+`SFC64`, `Philox`, standalone `MT19937` — all **bit-exact** with numpy (#9/#36
+closed). PCG64 was already bit-exact.
 
-### add-polynomial-classes ⬜ (only `*vander`/`*roots` shipped via orthopoly)
-The `Chebyshev`/`Legendre`/`Hermite`/`HermiteE`/`Laguerre` **classes** with
-domain/window mapping, `fit`/`roots`/`deriv`/`integ`/conversion, plus
-`*fromroots`/`*companion`/`*gauss`. (`*vander` and `*roots` free functions are
-done; the classes and calculus are the remaining work.)
+### add-polynomial-classes ✅ (classes + calculus shipped)
+The `Polynomial`/`Chebyshev`/`Legendre`/`Hermite`/`HermiteE`/`Laguerre` classes
+with `roots`/`deriv`/`integ`/arithmetic/conversion, plus `*vander`/`*roots`/
+`*companion`. Remaining (Bucket C below): explicit `domain`/`window` mapping and
+class-level `fit`.
 
 ### add-char-strings-completion ✅
 `center`/`ljust`/`rjust`/`zfill`, `swapcase`, `expandtabs`, and the `is*`
@@ -192,28 +196,52 @@ NVIDIA RTX 5060 (sm_120): float32/64 add/sub/mul/div/neg/sqrt + sum/prod +
 **GEMM/matmul** on the GPU (CUDA via PTX-virtual JIT). Deferred: Metal/Vulkan,
 device-resident buffers / async transfer, tiled GEMM, Auto-routed matmul.
 
-### add-bitexact-longtail 🟡
-**Philox (#36)** and standalone **MT19937 (#9)** are now bit-exact with numpy
-(joining PCG64 and SFC64). Remaining: `choice(replace=False)` (#7) and the
-ziggurat normal/exponential (#8) — distinct numpy-internal algorithms.
+### add-bitexact-longtail ✅
+**Philox (#36)**, standalone **MT19937 (#9)**, `choice(replace=False)` (#7) and
+the ziggurat `standard_normal`/`standard_exponential` (#8) are all now bit-exact
+with numpy (joining PCG64 and SFC64). All four BitGenerators are bit-exact.
 
-### add-interop-misc ⬜
-`memmap`, DEFLATE `savez_compressed`, DLPack / array-API (`__dlpack__`/
-`from_dlpack`), `ctypeslib`, and an optional pocketfft/FFTW FFT backend.
+### add-interop-misc ✅ (the portable parts)
+**DLPack** (`to_dlpack`/`from_dlpack`, zero-copy) and **`memmap`** (mmap-backed
+arrays) shipped. Deferred (need external deps — see Bucket B): DEFLATE
+`savez_compressed` (zlib), pocketfft/FFTW FFT backend, `ctypeslib`.
 
 ---
 
-## What's left (post Tier A/B/C)
+## What's left — the genuine NumPy long-tail, grouped by *why*
 
-NumPP covers the full practical NumPy surface plus real GPU backends. What's left:
-- **add-bitexact-longtail** (partial) — bit-exact RNG parity. PCG64, SFC64,
-  **Philox (#36)** and **MT19937 (#9)** are done; only `choice(replace=False)`
-  (#7) and the ziggurat normal/exp (#8) remain. Pure reverse-engineering, no deps.
-- **add-interop-misc** (not started) — memmap, compressed npz, DLPack/array-API,
-  ctypeslib, FFTW. Mostly external dependencies that conflict with the
-  no-dependency, iOS/Android-portable goal; pick individually as needed.
+The whole roadmap above is delivered. What NumPP still lacks vs real NumPy falls
+into three buckets, separated by the reason it's missing. This is the accurate,
+current accounting (verified against the source, not against older notes).
 
-Plus the advanced sub-items deferred inside delivered changes (see each change's
-Non-goals): masked-array operators, object dtype, Metal/Vulkan + tiled/device GEMM,
-the polynomial-class domain/window + fit, char `split`/StringDType, `vectorize`/
-`frompyfunc`, N-D gradient spacing, extra pad modes, `mask_indices`, etc.
+### Bucket A — needs a Python runtime / dynamic object model (won't port cleanly)
+| Missing | Note |
+|---------|------|
+| `object` dtype | type-erased Python-object arrays — no equivalent without a runtime object model |
+| `recarray` | attribute-access record arrays (structured field *access* exists; the `.field` class doesn't) |
+| `frompyfunc` + multi-arg `vectorize` | only the 1-arg scalar `vectorize` exists |
+| `ctypeslib`, `np.matrix` | ctypes-specific / deprecated upstream — N/A |
+
+### Bucket B — needs an external dependency (breaks the no-dep, iOS/Android charter)
+| Missing | Note |
+|---------|------|
+| `savez_compressed` real DEFLATE | exists but stores *uncompressed* (numpy-readable); real compression needs zlib |
+| FFTW / pocketfft FFT backend | optional accel dep |
+| `longdouble` / `float128` | platform extended precision |
+| Metal / Vulkan GPU | other-platform backends (OpenCL + CUDA shipped) |
+
+### Bucket C — portable, charter-compatible (ACTIVE WORK → `add-portable-numpy-gaps`)
+These are both missing *and* implementable in dependency-free C++. Each is its own
+PR, oracle-validated, merged after CI is green.
+
+| Feature | What it is |
+|---------|------------|
+| `errstate`/`seterr`/`geterr` | floating-point error-state control |
+| `shares_memory`/`may_share_memory` | memory-overlap detection between arrays |
+| `nditer`/`ndenumerate`/`ndindex` | public iterator API |
+| array-API 2023 names | `matrix_transpose`, `vecdot`, `vector_norm`, `matrix_norm`, `permute_dims` |
+| `busdaycalendar` | custom business-day calendars (`weekmask`/`holidays`) |
+| `einsum(optimize=)` / `einsum_path` | contraction-order optimizer |
+| masked hard/soft masks | `harden_mask`/`soften_mask`/`hardmask` assignment semantics |
+| polynomial-class `domain`/`window` + `fit` | the remaining `numpy.polynomial` class surface |
+| NumPy-2.0 `StringDType` | variable-length UTF-8 strings |
