@@ -19,6 +19,7 @@ add_executable(numpp_tests
     test_orthopoly.cpp
     test_orthopoly_calc.cpp
     test_poly_classes.cpp
+    test_poly_fit.cpp
     test_char_extra.cpp
     test_char_extra2.cpp
     test_printopts.cpp

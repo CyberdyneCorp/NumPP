@@ -28,6 +28,7 @@ add_library(numpp
     random/bitgenerators.cpp
     polynomial/orthopoly.cpp
     polynomial/orthopoly_calc.cpp
+    polynomial/poly_classes.cpp
     strings/char_extra.cpp
     strings/char_extra2.cpp
     io/printopts.cpp
