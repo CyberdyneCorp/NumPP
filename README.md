@@ -3,7 +3,7 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)](#)
+[![Version](https://img.shields.io/badge/version-1.1.0-brightgreen)](#)
 [![Tests](https://img.shields.io/badge/oracle%20checks-1861%20vs%20NumPy-brightgreen)](#)
 [![GPU](https://img.shields.io/badge/GPU-OpenCL%20%2B%20CUDA-76B900?logo=nvidia&logoColor=white)](docs/gpu-backends.md)
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — NumPy-parity expansion & real GPU acceleration
+## 1.1.0 — 2026-06-27 — NumPy-parity expansion & real GPU acceleration
 
 Builds on 1.0.0 to cover the full practical NumPy surface and add real GPU
 backends. **1861 oracle checks across 649 cases vs NumPy 2.1.3, zero
