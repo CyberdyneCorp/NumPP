@@ -19,6 +19,7 @@
 #include "numpp/indexing/indexing_extra.hpp"
 #include "numpp/mathx/mathx.hpp"
 #include "numpp/mathx/typecheck.hpp"
+#include "numpp/mathx/closeto.hpp"
 #include "numpp/poly/poly.hpp"
 #include "numpp/poly/poly1d.hpp"
 #include "numpp/polynomial/polynomial.hpp"
