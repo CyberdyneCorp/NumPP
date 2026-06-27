@@ -61,5 +61,8 @@ A frozen-golden mode lets CI run without Python. Sign/order-ambiguous results
 The four BitGenerators and the ziggurat/`choice` paths are checked **bit-exact**
 against numpy's raw streams; distributions whose numpy algorithm isn't replicated
 in portable C++ are validated **statistically** (large-sample moments vs the
-closed-form theory). 2083 oracle checks across 770 cases pass with zero
-divergences.
+closed-form theory). Beyond hand-written cases, we also **mine NumPy's own test
+suite** (e.g. `numpy/linalg/tests/test_linalg.py`) — its seed arrays and edge
+cases (complex, non-square, size-0, 1×1, stacked) are replayed through the oracle;
+this surfaced and fixed a real SVD accuracy bug (#74). 2118 oracle checks across
+789 cases pass with zero divergences.
