@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(NumPP
-    VERSION 1.3.4
+    VERSION 1.3.5
     DESCRIPTION "Modern C++20 port of NumPy with tiered acceleration"
     HOMEPAGE_URL "https://github.com/leonardoaraujosantos/NumPP"
     LANGUAGES CXX
