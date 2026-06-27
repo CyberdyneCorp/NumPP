@@ -4,7 +4,7 @@
 [![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)](#)
-[![Tests](https://img.shields.io/badge/oracle%20checks-1979%20vs%20NumPy-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/oracle%20checks-2058%20vs%20NumPy-brightgreen)](#)
 [![GPU](https://img.shields.io/badge/GPU-OpenCL%20%2B%20CUDA-76B900?logo=nvidia&logoColor=white)](docs/gpu-backends.md)
 
 Modern **C++20 port of [NumPy](https://github.com/numpy/numpy)** — a clean-room
@@ -57,7 +57,7 @@ op ──► dispatcher ──► device present & size ≥ threshold? ──►
 | B | **einsum & polynomials** | `einsum` (subscript parser) + tensordot/cross/cond/multi_dot; legacy poly + `numpy.polynomial` (power/Chebyshev/Legendre/Hermite/Laguerre val/vander/roots/der/int + classes); convolve/correlate/interp; ufunc extras, stride tricks (`sliding_window_view`/`as_strided`/`piecewise`) |
 | C | **GPU / ma / interop / testing** | **real OpenCL + CUDA backends** (elementwise + reductions + tiled **GEMM**); `numpy.ma` masked arrays (arithmetic, per-axis reductions); `numpy.testing` asserts; **DLPack** + **memmap** |
 
-**1979 oracle checks across 711 cases pass against NumPy 2.1.3** with zero
+**2058 oracle checks across 752 cases pass against NumPy 2.1.3** with zero
 divergences, on clang and gcc, clean under AddressSanitizer/UBSan.
 
 ### Bit-exact randomness
