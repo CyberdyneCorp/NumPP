@@ -3,6 +3,7 @@
 #include "numpp/backend/backend.hpp"
 #include "numpp/backend/gpu_vtable.hpp"
 #include "numpp/core/creation.hpp"
+#include "numpp/umath/errstate.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -194,12 +195,15 @@ ndarray binary(const ndarray& a, const ndarray& b, BinOp op) {
   ndarray aa = a.astype(cdt).broadcast_to(bs);
   ndarray bb = b.astype(cdt).broadcast_to(bs);
   ndarray res(bs, cdt, Order::C);
+  const bool track_fp = cdt.is_floating() || cdt.is_complex();
+  detail::fp_guard fpg;
   visit_dtype(cdt.id(), [&](auto tag) {
     using T = typename decltype(tag)::type;
     // half and bool are proxied away before compute; guard so the switch compiles.
     if constexpr (std::is_same_v<T, half> || std::is_same_v<T, bool>) { (void)res; }
     else zip2<T, T>(aa, bb, res, [&](T x, T y) { return bin_scalar<T>(op, x, y); });
   });
+  if (track_fp) fpg.check();  // apply errstate policy (may throw on "raise")
   return cdt == out_dt ? res : res.astype(out_dt);
 }
 
@@ -332,12 +336,14 @@ ndarray unary_float(const ndarray& a, FUn op) {
   DType cdt = proxy(out_dt);  // half -> float32
   ndarray aa = a.astype(cdt);
   ndarray res(aa.shape(), cdt, Order::C);
+  detail::fp_guard fpg;
   visit_dtype(cdt.id(), [&](auto tag) {
     using T = typename decltype(tag)::type;
     if constexpr (std::is_floating_point_v<T>) zip1<T, T>(aa, res, [&](T x) { return funary_real<T>(op, x); });
     else if constexpr (is_cplx<T>) zip1<T, T>(aa, res, [&](T x) { return funary_cplx<T>(op, x); });
     else { (void)res; }
   });
+  fpg.check();  // apply errstate policy (may throw on "raise")
   return cdt == out_dt ? res : res.astype(out_dt);
 }
 

@@ -34,6 +34,7 @@ add_executable(numpp_tests
     test_creation.cpp
     test_backend.cpp
     test_error.cpp
+    test_errstate.cpp
     test_ufunc.cpp
     test_ufunc2.cpp
     test_ufunc3.cpp

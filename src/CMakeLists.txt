@@ -18,6 +18,7 @@ add_library(numpp
     polynomial/polynomial.cpp
     tensor/tensor.cpp
     umath/ufunc.cpp
+    umath/errstate.cpp
     linalg/linalg.cpp
     fft/fft.cpp
     random/random.cpp
