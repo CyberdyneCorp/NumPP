@@ -256,7 +256,10 @@ ndarray unary_same(const ndarray& a, UnOp op) {
         case UnOp::Sign:
           if constexpr (is_cplx<T>) return std::abs(x) == 0.0 ? T(0) : x / std::abs(x);
           else if constexpr (std::is_unsigned_v<T>) return x > 0 ? T(1) : T(0);
-          else return static_cast<T>((x > 0) - (x < 0));
+          else if constexpr (std::is_floating_point_v<T>) {
+            if (std::isnan(x)) return x;  // numpy: sign(nan) == nan
+            return static_cast<T>((x > 0) - (x < 0));
+          } else return static_cast<T>((x > 0) - (x < 0));
       }
       return x;
     });
