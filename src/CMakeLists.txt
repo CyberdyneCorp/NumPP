@@ -4,6 +4,7 @@ add_library(numpp
     core/shape.cpp
     core/ndarray.cpp
     core/creation.cpp
+    core/limits.cpp
     manip/manip.cpp
     manip/manip_extra.cpp
     stats/stats.cpp

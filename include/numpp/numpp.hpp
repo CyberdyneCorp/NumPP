@@ -25,6 +25,7 @@
 #include "numpp/poly/poly1d.hpp"
 #include "numpp/polynomial/polynomial.hpp"
 #include "numpp/tensor/tensor.hpp"
+#include "numpp/core/limits.hpp"
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/umath/errstate.hpp"
 #include "numpp/linalg/linalg.hpp"
