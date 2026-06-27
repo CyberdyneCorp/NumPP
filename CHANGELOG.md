@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.6 — 2026-06-27 — test_nanfunctions.py mining: NaN-reduction fixes
+
+Mines NumPy's own `numpy/lib/tests/test_nanfunctions.py` through the live-NumPy
+oracle (all-NaN slices, partial-NaN data, per-axis mixes, ddof edges). **879 cases /
+2359 checks, 0 divergences.** Three real bugs found and fixed:
+
+- **`nanmax`/`nanmin` of an all-NaN slice now return `nan`** (was `±inf`). The
+  kernels fill NaN with `∓inf` then reduce, so an all-NaN slice collapsed to the
+  fill value; fixed by setting zero-count slices to `nan` (scalar + per-axis). (#94)
+- **`nanargmin`/`nanargmax` of an all-NaN slice now raise `value_error`** (was a
+  silent bogus index `0`), matching numpy's `ValueError`. (#96)
+- **`nanvar`/`nanstd` with `ddof >= non-NaN count` now return `nan`** (was `inf` or
+  negative), matching numpy's degrees-of-freedom ≤ 0 rule. (#97)
+
 ## 1.3.5 — 2026-06-27 — INT_MIN crash fix + test_multiarray.py mining
 
 Continues mining NumPy's own tests through the live-NumPy oracle (now `test_umath.py`
