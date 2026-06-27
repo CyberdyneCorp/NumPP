@@ -63,6 +63,7 @@ add_executable(numpp_tests
     test_strings.cpp
     test_datetime.cpp
     test_busday.cpp
+    test_busday_calendar.cpp
     test_testing.cpp
     test_masked.cpp
     test_dlpack.cpp
