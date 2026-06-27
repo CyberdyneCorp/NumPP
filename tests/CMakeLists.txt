@@ -59,6 +59,7 @@ add_executable(numpp_tests
     test_nanfunctions_mined.cpp
     test_nanfunctions_mined2.cpp
     test_numeric_mined.cpp
+    test_einsum_mined.cpp
     test_ufunc2.cpp
     test_ufunc3.cpp
     test_linalg.cpp
