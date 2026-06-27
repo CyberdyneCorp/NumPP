@@ -45,6 +45,7 @@ add_library(numpp
     sorting/sorting_extra.cpp
     strings/strings.cpp
     strings/char.cpp
+    strings/string_dtype.cpp
     datetime/datetime.cpp
     datetime/busday.cpp
     testing/testing.cpp
