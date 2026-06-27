@@ -5,6 +5,7 @@ add_executable(numpp_tests
     test_manip_extra.cpp
     test_stats.cpp
     test_stats_extra.cpp
+    test_integrate.cpp
     test_grids.cpp
     test_construct.cpp
     test_indexing.cpp
