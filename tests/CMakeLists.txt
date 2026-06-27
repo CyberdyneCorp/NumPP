@@ -35,6 +35,7 @@ add_executable(numpp_tests
     test_tensor.cpp
     test_tensor_solve.cpp
     test_einsum_path.cpp
+    test_einsum_ellipsis.cpp
     test_polynomial.cpp
     test_textio.cpp
     test_char.cpp
