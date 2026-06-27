@@ -1,13 +1,14 @@
 # Changelog
 
-## Unreleased — Bucket C: portable NumPy long-tail
+## 1.2.0 — 2026-06-27 — Bucket C: portable NumPy long-tail
 
 Closes the `add-portable-numpy-gaps` OpenSpec change — the set of NumPy features
 that were both still missing *and* implementable in dependency-free C++ (Buckets A
 and B remain deferred by design, as they need a Python runtime/object model or an
 external dependency). Nine features, each shipped as its own oracle-validated PR
 merged after CI green. **711 oracle cases / 1979 checks vs NumPy 2.1.3, 0
-divergences.**
+divergences**, on clang + gcc, clean under ASan/UBSan; CI green across
+ubuntu/macos × clang/gcc + iOS/Android no-accel + sanitizers.
 
 - **errstate / seterr / geterr** — floating-point error-state control
   (divide/over/under/invalid → ignore/warn/raise/call), a scoped `errstate` guard,
