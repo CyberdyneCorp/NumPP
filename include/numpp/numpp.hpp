@@ -52,6 +52,7 @@
 #include "numpp/sorting/sorting_extra.hpp"
 #include "numpp/strings/strings.hpp"
 #include "numpp/strings/char.hpp"
+#include "numpp/strings/string_dtype.hpp"
 #include "numpp/datetime/datetime.hpp"
 #include "numpp/datetime/busday.hpp"
 #include "numpp/testing/testing.hpp"
