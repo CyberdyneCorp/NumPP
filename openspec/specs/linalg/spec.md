@@ -57,6 +57,15 @@ quantities that are unique (singular values, sorted eigenvalues).
 - WHEN `svd(A)` returns U, S, Vh
 - THEN S equals `numpy.linalg.svd(A)[1]` within tolerance and `U@diag(S)@Vh` reconstructs A
 
+#### Scenario: SVD high relative accuracy on small singular values
+- GIVEN a (real or complex) matrix with a singular value near zero (a rank-deficient
+  or near-singular matrix)
+- WHEN `svd`/`svdvals` is computed
+- THEN the small singular value is resolved to near machine precision (not ~√eps),
+  so `matrix_rank` and `pinv` agree with numpy for near-singular inputs. (The SVD is
+  computed by one-sided Jacobi rather than the eigendecomposition of AᴴA, which would
+  square the condition number.)
+
 #### Scenario: Symmetric eigenvalues
 - WHEN `eigvalsh(A)` is computed for a symmetric A
 - THEN the sorted result equals `numpy.linalg.eigvalsh(A)` within tolerance

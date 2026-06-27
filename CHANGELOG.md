@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.1 — 2026-06-27 — SVD accuracy fix + NumPy-test mining
+
+Validation now also **mines NumPy's own test suite** (`numpy/linalg/tests/test_linalg.py`):
+its seed arrays and edge cases (complex, non-square, size-0, 1×1, stacked) are replayed
+through the live-NumPy oracle. **789 cases / 2118 checks, 0 divergences.**
+
+- **SVD high relative accuracy (#74).** The SVD was computed from the eigendecomposition
+  of `AᴴA`, which squares the condition number and left the smallest singular values
+  accurate only to ~`√eps` (≈1e-8). A rank-deficient matrix was therefore reported as
+  full rank, and `pinv`/`cond` lost accuracy near singularity. Replaced with a
+  **one-sided Jacobi (Hestenes) SVD** for both real and complex (complex pairs are
+  phase-aligned before the rotation), unified behind one `svd_jacobi<T>`. Small
+  singular values now resolve to near machine zero and `matrix_rank`/`pinv` match
+  numpy for near-singular inputs.
+
 ## 1.3.0 — 2026-06-27 — NumPy-foundation completion (base for a C++ SciPy port)
 
 Closes the `numpy-foundation-completion` OpenSpec change — the remaining genuine
