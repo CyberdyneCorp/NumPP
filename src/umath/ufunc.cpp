@@ -647,15 +647,28 @@ ndarray nanmean(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   ndarray cnt = sum(logical_not(isn), axis, keepdims).astype(kFloat64);
   return divide(s, cnt);
 }
+namespace {
+// All-NaN slices reduce to +/-inf with the fill trick; numpy returns NaN there.
+ndarray nan_extreme_fix(const ndarray& r, const ndarray& isn, std::optional<int64_t> axis, bool keepdims) {
+  ndarray cnt = sum(logical_not(isn), axis, keepdims);  // count of non-NaN per slice
+  ndarray nanfill = full_like(r, std::numeric_limits<double>::quiet_NaN());
+  return where(equal(cnt, full_like(cnt, 0)), nanfill, r);
+}
+}  // namespace
+
 ndarray nanmin(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   if (!a.dtype().is_floating()) return amin(a, axis, keepdims);
   double inf = std::numeric_limits<double>::infinity();
-  return amin(where(isnan(a), full_like(a, inf), a), axis, keepdims);
+  ndarray isn = isnan(a);
+  ndarray r = amin(where(isn, full_like(a, inf), a), axis, keepdims);
+  return nan_extreme_fix(r, isn, axis, keepdims);
 }
 ndarray nanmax(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   if (!a.dtype().is_floating()) return amax(a, axis, keepdims);
   double inf = std::numeric_limits<double>::infinity();
-  return amax(where(isnan(a), full_like(a, -inf), a), axis, keepdims);
+  ndarray isn = isnan(a);
+  ndarray r = amax(where(isn, full_like(a, -inf), a), axis, keepdims);
+  return nan_extreme_fix(r, isn, axis, keepdims);
 }
 ndarray nanvar(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
   ndarray isn = isnan(a);
