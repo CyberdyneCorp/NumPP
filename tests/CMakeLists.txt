@@ -53,6 +53,7 @@ add_executable(numpp_tests
     test_linalg.cpp
     test_batched_linalg.cpp
     test_linalg_mined.cpp
+    test_linalg_mined2.cpp
     test_array_api.cpp
     test_linalg2.cpp
     test_linalg3.cpp

@@ -14,15 +14,18 @@ matmul, trace, diagonal, transpose, sum, outer, inner and batched contractions.
 
 ### Requirement: Tensor contraction helpers
 NumPP SHALL provide tensordot (axis count or explicit axis lists), cross (last
-axis length 2 or 3), cond (2-norm condition number) and multi_dot, matching numpy.
+axis length 2 or 3), cond and multi_dot, matching numpy. `cond` SHALL accept a
+norm selector `p` ∈ {None(2), 1, -1, 2, -2, +inf, -inf, 'fro'}: 2/-2 use singular
+values, the others use norm(A,p)·norm(inv(A),p); a singular matrix yields infinity.
 
 #### Scenario: tensordot and cross match numpy
 - WHEN tensordot/cross are evaluated
 - THEN the result equals numpy.tensordot / numpy.cross
 
 #### Scenario: cond and multi_dot match numpy
-- WHEN cond/multi_dot are evaluated
-- THEN the result equals numpy.linalg.cond / numpy.linalg.multi_dot
+- WHEN cond is evaluated for each supported `p` (and multi_dot for a chain)
+- THEN the result equals numpy.linalg.cond(A, p) / numpy.linalg.multi_dot, and a
+  singular matrix gives an infinite condition number for positive norms
 
 ### Requirement: einsum contraction-order optimization
 NumPP SHALL accept an `optimize` option on `einsum` (false, or a greedy

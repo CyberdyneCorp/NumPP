@@ -31,8 +31,12 @@ NUMPP_API ndarray tensordot(const ndarray& a, const ndarray& b,
 // Cross product over the last axis (length 2 or 3).
 NUMPP_API ndarray cross(const ndarray& a, const ndarray& b);
 
-// 2-norm condition number (largest/smallest singular value).
+// Condition number (numpy.linalg.cond). The no-`p` form is the 2-norm
+// (largest/smallest singular value). `p` selects the norm: 2 / -2 use singular
+// values, the rest use norm(A,p)*norm(inv(A),p); a singular matrix gives inf.
 NUMPP_API ndarray cond(const ndarray& a);
+NUMPP_API ndarray cond(const ndarray& a, double p);              // 1, -1, 2, -2, +/-inf
+NUMPP_API ndarray cond(const ndarray& a, const std::string& p);  // "fro"
 
 // Chained matrix product a0 @ a1 @ ... (left to right).
 NUMPP_API ndarray multi_dot(const std::vector<ndarray>& arrays);
