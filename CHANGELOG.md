@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.5 — 2026-06-27 — INT_MIN crash fix + test_multiarray.py mining
+
+Continues mining NumPy's own tests through the live-NumPy oracle (now `test_umath.py`
+overflow cases and `test_multiarray.py` array-core behaviors). **862 cases / 2313
+checks, 0 divergences.**
+
+- **Crash fix: `floor_divide`/`remainder` of `INT_MIN` by `-1`** aborted the process
+  with SIGFPE (signed-overflow → hardware divide exception; UB in C++). numpy wraps
+  to `INT_MIN`. Guarded the `MIN/-1` case in `int_floordiv` (→ `INT_MIN`) and factored
+  remainder into `int_mod` (→ `0`, since `x % -1 == 0`). (#87)
+- **Array-core regression coverage** from `test_multiarray.py`: argmax/argmin
+  (NaN-wins), negative-step slicing, clip/diagonal/repeat/take, concatenate/stack,
+  broadcast/transpose, fancy/boolean indexing, put/place/choose/compress,
+  ravel/unravel_index, 0-d arrays, reduction dtype upcasting, integer overflow,
+  astype casting, partition/argpartition, searchsorted, axis sort — all match numpy.
+
 ## 1.3.4 — 2026-06-27 — test_umath.py mining: ufunc special-value fixes
 
 Mines NumPy's own `numpy/_core/tests/test_umath.py` by replaying special-value
