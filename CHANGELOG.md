@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.2 — 2026-06-27 — cond(p) + comprehensive test_linalg.py mining
+
+Completes mining of NumPy's own `numpy/linalg/tests/test_linalg.py` through the
+live-NumPy oracle (34 added cases across solve/inv/det/slogdet/svd/pinv/matrix_rank/
+cond/lstsq/eig/eigh/matrix_power/qr/norm/multi_dot, for real & complex, non-square,
+size-0, 1×1 and stacked inputs). **804 cases / 2162 checks, 0 divergences.**
+
+- **`cond(a, p)` — full numpy parity.** The mining showed `cond` only computed the
+  2-norm. Added the `p` selector ∈ {1, -1, 2, -2, +inf, -inf, 'fro'}: 2/-2 use
+  singular values, the rest use `norm(A,p)·norm(inv(A),p)`; a singular matrix yields
+  infinity (the 2-norm path now returns inf instead of nan when σ_min is 0).
+- Comprehensive linalg regression coverage from numpy's seed arrays/edge cases.
+
 ## 1.3.1 — 2026-06-27 — SVD accuracy fix + NumPy-test mining
 
 Validation now also **mines NumPy's own test suite** (`numpy/linalg/tests/test_linalg.py`):
