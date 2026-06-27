@@ -16,6 +16,7 @@ add_executable(numpp_tests
     test_closeto.cpp
     test_typecheck.cpp
     test_poly.cpp
+    test_interp_options.cpp
     test_poly1d.cpp
     test_distributions2.cpp
     test_distributions3.cpp
