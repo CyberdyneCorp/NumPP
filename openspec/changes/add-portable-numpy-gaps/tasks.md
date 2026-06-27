@@ -3,7 +3,7 @@
 Each feature is one PR, oracle-validated, merged after CI is green. Bugs → GitHub
 issue + regression test.
 
-- [ ] **error-state**: errstate/seterr/geterr/seterrcall; tests; PR + CI green
+- [x] **error-state**: errstate/seterr/geterr/seterrcall; tests; PR + CI green
 - [ ] **memory-overlap**: shares_memory/may_share_memory; tests; PR + CI green
 - [ ] **array-iteration**: ndindex/ndenumerate/nditer; tests; PR + CI green
 - [ ] **linalg array-API**: matrix_transpose/vecdot/vector_norm/matrix_norm/permute_dims; tests; PR + CI green

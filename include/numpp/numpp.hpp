@@ -24,6 +24,7 @@
 #include "numpp/polynomial/polynomial.hpp"
 #include "numpp/tensor/tensor.hpp"
 #include "numpp/umath/ufunc.hpp"
+#include "numpp/umath/errstate.hpp"
 #include "numpp/linalg/linalg.hpp"
 #include "numpp/fft/fft.hpp"
 #include "numpp/random/random.hpp"
