@@ -33,6 +33,7 @@ add_library(numpp
     io/printopts.cpp
     lib/striding.cpp
     lib/striding2.cpp
+    lib/memory_overlap.cpp
     io/npy.cpp
     textio/textio.cpp
     io/npz.cpp

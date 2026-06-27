@@ -40,6 +40,7 @@
 #include "numpp/io/printopts.hpp"
 #include "numpp/lib/stride_tricks.hpp"
 #include "numpp/lib/stride_tricks2.hpp"
+#include "numpp/lib/memory_overlap.hpp"
 #include "numpp/lib/leftovers.hpp"
 #include "numpp/io/npy.hpp"
 #include "numpp/io/npz.hpp"
