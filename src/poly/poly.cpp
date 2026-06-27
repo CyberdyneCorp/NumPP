@@ -69,17 +69,54 @@ ndarray correlate(const ndarray& a, const ndarray& v, const std::string& mode) {
   return from_vec(slice_mode(conv_full(av, vr), av.size(), vr.size(), mode));
 }
 
-ndarray interp(const ndarray& x, const ndarray& xp, const ndarray& fp) {
+namespace {
+// Python/numpy floating modulo: result carries the sign of the (positive) divisor.
+double pymod(double a, double p) {
+  double r = std::fmod(a, p);
+  if (r < 0.0) r += p;
+  return r;
+}
+// Sort (xp, fp) by xp ascending, then wrap one period on each side so any x
+// reduced mod period lands inside the extended grid (numpy.interp periodic mode).
+void make_periodic(std::vector<double>& xpv, std::vector<double>& fpv, double per) {
+  for (double& v : xpv) v = pymod(v, per);
+  std::vector<size_t> idx(xpv.size());
+  for (size_t i = 0; i < idx.size(); ++i) idx[i] = i;
+  std::sort(idx.begin(), idx.end(), [&](size_t a, size_t b) { return xpv[a] < xpv[b]; });
+  std::vector<double> sx, sf;
+  sx.reserve(xpv.size() + 2);
+  sf.reserve(fpv.size() + 2);
+  sx.push_back(xpv[idx.back()] - per);
+  sf.push_back(fpv[idx.back()]);
+  for (size_t i : idx) { sx.push_back(xpv[i]); sf.push_back(fpv[i]); }
+  sx.push_back(xpv[idx.front()] + per);
+  sf.push_back(fpv[idx.front()]);
+  xpv.swap(sx);
+  fpv.swap(sf);
+}
+}  // namespace
+
+ndarray interp(const ndarray& x, const ndarray& xp, const ndarray& fp,
+               std::optional<double> left, std::optional<double> right,
+               std::optional<double> period) {
   std::vector<double> xv = to_vec(x), xpv = to_vec(xp), fpv = to_vec(fp);
+  if (period) {
+    const double per = std::abs(*period);
+    for (double& v : xv) v = pymod(v, per);
+    make_periodic(xpv, fpv, per);
+  }
   const int64_t n = static_cast<int64_t>(xpv.size());
+  const double leftv = (left && !period) ? *left : fpv.front();
+  const double rightv = (right && !period) ? *right : fpv.back();
   ndarray out(x.shape(), kFloat64, Order::C);
   double* o = out.size() ? out.typed_data<double>() : nullptr;
   for (size_t k = 0; k < xv.size(); ++k) {
     const double xi = xv[k];
-    if (xi <= xpv.front()) { o[k] = fpv.front(); continue; }
-    if (xi >= xpv.back()) { o[k] = fpv.back(); continue; }
+    if (xi < xpv.front()) { o[k] = leftv; continue; }
+    if (xi > xpv.back()) { o[k] = rightv; continue; }
     int64_t hi = 1;
     while (hi < n && xpv[hi] < xi) ++hi;
+    if (hi >= n) { o[k] = fpv.back(); continue; }
     const double t = (xi - xpv[hi - 1]) / (xpv[hi] - xpv[hi - 1]);
     o[k] = fpv[hi - 1] + t * (fpv[hi] - fpv[hi - 1]);
   }
