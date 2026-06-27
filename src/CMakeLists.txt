@@ -20,6 +20,7 @@ add_library(numpp
     umath/ufunc.cpp
     umath/errstate.cpp
     linalg/linalg.cpp
+    linalg/array_api.cpp
     fft/fft.cpp
     random/random.cpp
     random/distributions.cpp
