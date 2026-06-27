@@ -10,6 +10,7 @@ add_executable(numpp_tests
     test_indexing.cpp
     test_indexing_extra.cpp
     test_mathx.cpp
+    test_closeto.cpp
     test_typecheck.cpp
     test_poly.cpp
     test_poly1d.cpp

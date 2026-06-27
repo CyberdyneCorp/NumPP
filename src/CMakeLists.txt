@@ -13,6 +13,7 @@ add_library(numpp
     indexing/indexing_extra.cpp
     mathx/mathx.cpp
     mathx/typecheck.cpp
+    mathx/closeto.cpp
     poly/poly.cpp
     poly/poly1d.cpp
     polynomial/polynomial.cpp
