@@ -5,7 +5,7 @@ issue + regression test.
 
 - [x] **error-state**: errstate/seterr/geterr/seterrcall; tests; PR + CI green
 - [x] **memory-overlap**: shares_memory/may_share_memory; tests; PR + CI green
-- [ ] **array-iteration**: ndindex/ndenumerate/nditer; tests; PR + CI green
+- [x] **array-iteration**: ndindex/ndenumerate/nditer; tests; PR + CI green
 - [ ] **linalg array-API**: matrix_transpose/vecdot/vector_norm/matrix_norm/permute_dims; tests; PR + CI green
 - [ ] **datetime**: busdaycalendar (weekmask/holidays) threaded through busday APIs; tests; PR + CI green
 - [ ] **einsum**: optimize= (greedy) + einsum_path; tests; PR + CI green

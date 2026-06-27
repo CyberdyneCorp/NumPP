@@ -25,6 +25,7 @@ add_executable(numpp_tests
     test_striding.cpp
     test_striding2.cpp
     test_memory_overlap.cpp
+    test_iteration.cpp
     test_tensor.cpp
     test_polynomial.cpp
     test_textio.cpp
