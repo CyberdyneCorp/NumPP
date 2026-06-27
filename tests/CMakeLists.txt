@@ -1,6 +1,7 @@
 add_executable(numpp_tests
     main.cpp
     test_dtype.cpp
+    test_casting.cpp
     test_manip.cpp
     test_manip_extra.cpp
     test_stats.cpp

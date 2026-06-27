@@ -1,5 +1,6 @@
 add_library(numpp
     core/dtype.cpp
+    core/casting.cpp
     core/shape.cpp
     core/ndarray.cpp
     core/creation.cpp
