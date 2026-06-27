@@ -1,6 +1,7 @@
 #include "numpp/numpp.hpp"
 #include "numpp_test.hpp"
 #include "oracle.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <functional>
