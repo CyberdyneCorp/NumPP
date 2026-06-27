@@ -8,8 +8,8 @@ issue + regression test.
 - [x] **array-iteration**: ndindex/ndenumerate/nditer; tests; PR + CI green
 - [x] **linalg array-API**: matrix_transpose/vecdot/vector_norm/matrix_norm/permute_dims; tests; PR + CI green
 - [x] **datetime**: busdaycalendar (weekmask/holidays) threaded through busday APIs; tests; PR + CI green
-- [ ] **einsum**: optimize= (greedy) + einsum_path; tests; PR + CI green
+- [x] **einsum**: optimize= (greedy) + einsum_path; tests; PR + CI green
 - [x] **masked hard/soft**: harden_mask/soften_mask/hardmask; tests; PR + CI green
-- [ ] **polynomial domain/window+fit**: class domain/window mapping + fit; tests; PR + CI green
-- [ ] **string-dtype**: NumPy-2.0 StringDType (variable-length UTF-8); tests; PR + CI green
-- [ ] openspec validate --strict; docs/CHANGELOG updated; archive change
+- [x] **polynomial domain/window+fit**: class domain/window mapping + fit; tests; PR + CI green
+- [x] **string-dtype**: NumPy-2.0 StringDType (variable-length UTF-8); tests; PR + CI green
+- [x] openspec validate --strict; docs/CHANGELOG updated; archive change
