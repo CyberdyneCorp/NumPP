@@ -259,9 +259,9 @@ charter.
 
 ### Foundation completion for a future C++ SciPy port (`numpy-foundation-completion`)
 NumPP is intended as the **NumPy-equivalent base** that a separate C++ SciPy port
-("SciPP") will build on. Boundary rule: `numpy.*` → NumPP, `scipy.*` → SciPP. A few
-genuine `numpy.*` primitives a SciPP leans on are still missing (none of them
-Bucket A/B), tracked in the `numpy-foundation-completion` change:
+("SciPP") will build on. Boundary rule: `numpy.*` → NumPP, `scipy.*` → SciPP. The
+`numpy-foundation-completion` change closed the genuine `numpy.*` primitives a SciPP
+leans on — **all delivered ✅**:
 
 | Tier | Item | Status |
 |------|------|:------:|
@@ -270,13 +270,13 @@ Bucket A/B), tracked in the `numpy-foundation-completion` change:
 | 1 | `trapz`/`trapezoid` | ✅ |
 | 1 | `promote_types`, `min_scalar_type` | ✅ |
 | 2 | **batched/stacked linalg** (last-two-axes over solve/inv/det/slogdet/matrix_power/cholesky/qr/eig*/svd*/pinv/matrix_rank) | ✅ |
-| 2 | `tensorsolve`/`tensorinv` | ⬜ |
-| 2 | `einsum` ellipsis `...` | ⬜ |
-| 2 | `interp` `left`/`right`/`period` | ⬜ |
+| 2 | `tensorsolve`/`tensorinv` | ✅ |
+| 2 | `einsum` ellipsis `...` | ✅ |
+| 2 | `interp` `left`/`right`/`period` | ✅ |
 
-(The batched-linalg gap was confirmed by spike — the routines used to be 2-D-only
-and throw on a `(k,n,n)` stack — and is now delivered; `lstsq` stays 2-D, matching
-numpy. Remaining: the three ⬜ Tier-2 items.)
+With this change delivered, **NumPP is a complete `numpy.*` foundation for a future
+C++ SciPy port**. `lstsq` stays 2-D (matching numpy). The only remaining NumPy
+surface is Buckets A and B, deferred by design.
 
 `object` dtype, `recarray`, `frompyfunc` (Bucket A) are explicitly **out** — a C++
 SciPP uses templates/variants/`std::function`, so adding them would be divergence

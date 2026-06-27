@@ -61,5 +61,5 @@ A frozen-golden mode lets CI run without Python. Sign/order-ambiguous results
 The four BitGenerators and the ziggurat/`choice` paths are checked **bit-exact**
 against numpy's raw streams; distributions whose numpy algorithm isn't replicated
 in portable C++ are validated **statistically** (large-sample moments vs the
-closed-form theory). 2058 oracle checks across 752 cases pass with zero
+closed-form theory). 2083 oracle checks across 770 cases pass with zero
 divergences.

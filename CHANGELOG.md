@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.3.0 — 2026-06-27 — NumPy-foundation completion (base for a C++ SciPy port)
+
+Closes the `numpy-foundation-completion` OpenSpec change — the remaining genuine
+`numpy.*` primitives a future C++ SciPy port ("SciPP") will stand on. Boundary rule:
+`numpy.*` belongs in NumPP, `scipy.*` belongs in SciPP. Nine features, each its own
+oracle-validated PR merged after CI green. **770 oracle cases / 2083 checks vs NumPy
+2.1.3, 0 divergences**; clang + gcc, clean under ASan/UBSan.
+
+- **finfo / iinfo** — machine limits (eps/tiny/max/min/resolution/bits/mantissa/
+  exponent) for float16/32/64 + complex, and integer-type bounds.
+- **isclose / isposinf / isneginf** — the elementwise predicates (array form of
+  `allclose`).
+- **trapz / trapezoid** — composite trapezoidal integration (`dx=`/`x=`/`axis`).
+- **promote_types / min_scalar_type** — complete the dtype casting-rule set.
+- **batched / stacked linalg** — `solve`/`inv`/`det`/`slogdet`/`matrix_power`/
+  `cholesky`/`qr`/`eig`/`eigh`/`eigvals`/`eigvalsh`/`svd`/`svdvals`/`pinv`/
+  `matrix_rank` now operate over the last two axes of an N-D stack (numpy semantics);
+  `lstsq` stays 2-D, matching numpy.
+- **tensorsolve / tensorinv** — the two missing `numpy.linalg` tensor routines.
+- **einsum ellipsis (`...`)** — broadcasting subscripts (batched matmul/diagonal),
+  composing with `optimize=`/`einsum_path`.
+- **interp left/right/period** — fill values and periodic interpolation.
+
 ## 1.2.0 — 2026-06-27 — Bucket C: portable NumPy long-tail
 
 Closes the `add-portable-numpy-gaps` OpenSpec change — the set of NumPy features
