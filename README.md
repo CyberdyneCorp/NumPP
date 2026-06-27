@@ -4,7 +4,8 @@
 [![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)](#)
-[![Tests](https://img.shields.io/badge/oracle%20checks-960%20vs%20NumPy-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/oracle%20checks-1861%20vs%20NumPy-brightgreen)](#)
+[![GPU](https://img.shields.io/badge/GPU-OpenCL%20%2B%20CUDA-76B900?logo=nvidia&logoColor=white)](docs/gpu-backends.md)
 
 Modern **C++20 port of [NumPy](https://github.com/numpy/numpy)** — a clean-room
 implementation validated against real NumPy as a numerical oracle (sibling of
@@ -48,20 +49,32 @@ op ──► dispatcher ──► device present & size ≥ threshold? ──►
 | 3 | **ufuncs** | arithmetic, comparison, logical, bitwise, shifts, full unary math + trig/hyperbolic, predicates, reductions (sum/prod/min/max/mean/var/std/any/all), where, clip, nonzero, operators with weak-promoted scalars, out=/where= |
 | 4 | **linalg** | dot/vdot/inner/outer/trace/kron, solve/inv/det/slogdet/matrix_power, cholesky, qr, eigh/eigvalsh, svd/svdvals/pinv/matrix_rank/lstsq, eig/eigvals, norms (all orders) |
 | 5 | **fft** | fft/ifft (Cooley-Tukey + Bluestein for any n), rfft/irfft, hfft/ihfft, fft2/fftn + real variants, fftfreq/fftshift |
-| 6 | **random** | PCG64 + MT19937 BitGenerators, Generator + legacy RandomState — **bit-exact** seeded streams; distributions (normal/exponential/gamma/beta/chisquare/poisson/binomial) |
-| 7 | **I/O** | `.npy`/`.npz` save/load (numpy-interop both ways), numpy-compatible `array_str`/`array_repr` |
-| 8 | **sorting** | sort/argsort (kinds, axis, NaN-last), partition/argpartition, searchsorted, unique, argmin/argmax, set ops, bincount, histogram |
-| 9 | **dtypes++** | fixed-width strings ('U'/'S'), datetime64/timedelta64, structured/record dtypes (field views) |
-| 10 | **device** | weak-vtable GPU dispatch for ufuncs/reductions (CPU-reference device proves the path) |
+| 6 | **random** | PCG64 / SFC64 / Philox / MT19937 BitGenerators, Generator + legacy RandomState — **bit-exact** with numpy (incl. ziggurat `standard_normal`/`standard_exponential`, `normal`, `choice(replace=False)`); 20+ further distributions (gamma/beta/poisson/binomial/laplace/weibull/multivariate_normal/dirichlet/…), statistically validated |
+| 7 | **I/O** | `.npy`/`.npz` save/load (numpy-interop), `loadtxt`/`savetxt`/`genfromtxt`, `fromstring`/`tofile`/`fromfile`, `binary_repr`/`base_repr`, print-options/`array2string`, `array_str`/`array_repr` |
+| 8 | **sorting** | sort/argsort/partition, searchsorted(+sorter), unique, argmin/argmax, set ops, bincount, histogram, lexsort, sort_complex |
+| 9 | **dtypes++** | fixed-width strings ('U'/'S'), datetime64/timedelta64 (+ business-day `is_busday`/`busday_count`/`busday_offset`), structured/record dtypes, `numpy.char` string ops |
+| A | **manipulation & stats** | concatenate/stack/split/tile/repeat/flip/roll/pad/atleast_*/block, cumsum/diff/gradient/percentile/median/cov/corrcoef/digitize + nan*, meshgrid/diag/tri*/vander/logspace, fancy+boolean indexing, take/put/diagonal/choose/select |
+| B | **einsum & polynomials** | `einsum` (subscript parser) + tensordot/cross/cond/multi_dot; legacy poly + `numpy.polynomial` (power/Chebyshev/Legendre/Hermite/Laguerre val/vander/roots/der/int + classes); convolve/correlate/interp; ufunc extras, stride tricks (`sliding_window_view`/`as_strided`/`piecewise`) |
+| C | **GPU / ma / interop / testing** | **real OpenCL + CUDA backends** (elementwise + reductions + tiled **GEMM**); `numpy.ma` masked arrays (arithmetic, per-axis reductions); `numpy.testing` asserts; **DLPack** + **memmap** |
 
-**960 oracle checks pass against NumPy 2.1.3** with zero divergences, on clang
-and gcc, clean under AddressSanitizer/UBSan.
+**1861 oracle checks across 649 cases pass against NumPy 2.1.3** with zero
+divergences, on clang and gcc, clean under AddressSanitizer/UBSan.
 
 ### Bit-exact randomness
-A seeded `numpp::random::Generator(seed)` reproduces
-`numpy.random.Generator(np.random.PCG64(seed))` **bit-for-bit** (raw stream,
-`random`, `integers`, `uniform`, `permutation`); `RandomState(seed)` matches the
-legacy MT19937 stream exactly.
+NumPP's `random` module reproduces numpy **bit-for-bit** across all four
+BitGenerators (PCG64, SFC64, Philox, MT19937), `Generator` and legacy
+`RandomState`: raw streams, `random`/`integers`/`uniform`/`permutation`, the
+**ziggurat** `standard_normal`/`standard_exponential` (and hence `normal`), and
+`choice(replace=False)`. (Reverse-engineered from numpy's source — e.g. numpy's
+Philox uses its own `M0 = 0xD2E7470EE14C6C93` and increments the counter before
+generating.)
+
+### Real GPU backends
+With `-DNUMPP_WITH_OPENCL=ON` or `-DNUMPP_WITH_CUDA=ON`, float32/float64
+arithmetic, `sqrt`, reductions and **matmul** run on the GPU behind the same
+weak-vtable dispatch (validated on an NVIDIA RTX 5060; tiled shared-memory GEMM
+is ~5–8× the CPU at fp64). Element-wise ops are IEEE-exact vs the CPU path. The
+default build stays pure-CPU and dependency-free. See [docs/gpu-backends.md](docs/gpu-backends.md).
 
 ## Build
 
@@ -77,7 +90,9 @@ Default build has **zero required dependencies**. Optional backends:
 |------|--------|
 | `-DNUMPP_WITH_BLAS=ON` | route GEMM through CBLAS |
 | `-DNUMPP_WITH_LAPACK=ON` | route solve etc. through LAPACKE |
-| `-DNUMPP_WITH_REFGPU=ON` | enable the CPU-reference device backend |
+| `-DNUMPP_WITH_OPENCL=ON` | real OpenCL GPU backend (elementwise/reductions/GEMM) |
+| `-DNUMPP_WITH_CUDA=ON` | real CUDA GPU backend (PTX-virtual arch; JITs to newer GPUs) |
+| `-DNUMPP_WITH_REFGPU=ON` | CPU-reference device backend (proves the dispatch path) |
 | `-DNUMPP_ENABLE_ASAN=ON` | AddressSanitizer |
 
 Packaging via `vcpkg.json` and `conanfile.py`; `find_package(NumPP)` exports the target.
@@ -124,16 +139,25 @@ just ci            # full local CI (clang + gcc + asan + spec + examples)
 just clean
 ```
 
-## Known limitations (tracked as GitHub issues)
+## Scope & deferred items
 
-These are *correct-but-not-bit/format-exact* or deferred — not correctness bugs:
+The full practical NumPy surface is covered and oracle-validated. Remaining gaps
+are deferred by design — mostly things needing **external dependencies** or
+**other platforms**, which would break the no-dependency, iOS/Android-portable
+goal. See [docs/numpy-parity-gaps.md](docs/numpy-parity-gaps.md) for the complete
+roadmap (now fully delivered) and per-item rationale.
 
-- Distributions use standard samplers (not numpy's ziggurat), validated
-  statistically (#8); `choice(replace=False)` is a valid sampler with a different
-  stream (#7); standalone `MT19937` raw stream differs (RandomState is exact) (#9).
-- Array printing is fixed-notation only — no scientific switch yet (#11).
-- Structured-dtype `.npy` save/load not yet implemented (#14).
-- Some ufunc long-tail (nan-reductions shipped; argmin/cumsum pending) (#3).
+- **External-dep interop**: DEFLATE-compressed `savez_compressed` (zlib), an FFTW
+  FFT backend, `ctypeslib`. DLPack and `memmap` interop *are* shipped.
+- **Other GPU platforms**: Metal/Vulkan backends, device-resident buffers, a
+  cuBLAS/clBLAST GEMM path (OpenCL + CUDA backends with tiled GEMM *are* shipped).
+- **Long-tail features**: scientific-notation printing toggle (#11),
+  structured-dtype `.npy` (#14), `object` dtype, hard/soft masks, NumPy-2.0
+  `StringDType`, orthogonal-polynomial domain/window mapping.
+
+Previously-tracked bit-exactness gaps are now **fixed**: ziggurat distributions
+(#8), `choice(replace=False)` (#7), standalone `MT19937` (#9) and Philox (#36)
+are all bit-exact with numpy.
 
 ## License
 
