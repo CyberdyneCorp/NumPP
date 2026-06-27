@@ -99,6 +99,18 @@ NUMPP_API DType result_type(DType a, DType b);
 // Matches numpy.can_cast for the supported casting modes.
 NUMPP_API bool can_cast(DType from, DType to, Casting casting);
 
+// numpy.promote_types: the smallest dtype both inputs can be safely cast to
+// (purely type-based, no value inspection). Numeric dtypes only.
+NUMPP_API DType promote_types(DType a, DType b);
+
+// numpy.min_scalar_type: the smallest dtype that can represent a scalar value.
+// Non-negative integers map to the smallest unsigned type, negative integers to
+// the smallest signed type, and floating values to the smallest float whose range
+// holds the magnitude (float16 -> float32 -> float64).
+NUMPP_API DType min_scalar_type(long long value);
+NUMPP_API DType min_scalar_type(unsigned long long value);
+NUMPP_API DType min_scalar_type(double value);
+
 // Maps a DTypeId to its concrete C++ storage type for generic kernels.
 template <DTypeId Id> struct dtype_traits;
 template <> struct dtype_traits<DTypeId::Bool>       { using type = bool; };
