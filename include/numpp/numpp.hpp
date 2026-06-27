@@ -13,6 +13,7 @@
 #include "numpp/manip/manip_extra.hpp"
 #include "numpp/stats/stats.hpp"
 #include "numpp/stats/stats_extra.hpp"
+#include "numpp/stats/integrate.hpp"
 #include "numpp/grids/grids.hpp"
 #include "numpp/construct/construct.hpp"
 #include "numpp/indexing/indexing.hpp"

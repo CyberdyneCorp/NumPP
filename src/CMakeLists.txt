@@ -8,6 +8,7 @@ add_library(numpp
     manip/manip_extra.cpp
     stats/stats.cpp
     stats/stats_extra.cpp
+    stats/integrate.cpp
     grids/grids.cpp
     construct/construct.cpp
     indexing/indexing.cpp
