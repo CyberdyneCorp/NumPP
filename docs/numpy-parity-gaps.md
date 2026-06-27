@@ -83,8 +83,10 @@ array-valued `kth` for partition.
 ## Tier 2 — important, larger scope
 
 ### einsum ✅ (high value)
-`einsum` with a subscript parser (sum/transpose/trace/matmul/outer/batched);
-plus `tensordot`, `cross`, `cond`, `multi_dot`, `tensorsolve`, `tensorinv`.
+`einsum` with a subscript parser (sum/transpose/trace/matmul/outer) + `optimize=`/
+`einsum_path`; plus `tensordot`, `cross`, `cond`, `multi_dot`. (`tensorsolve`/
+`tensorinv` and einsum ellipsis `...` are **not** yet shipped — see
+`numpy-foundation-completion`.)
 
 ### Full random distribution set ✅
 `geometric`, `hypergeometric`, `laplace`, `logistic`, `lognormal`, `pareto`,
@@ -254,3 +256,24 @@ With Bucket C delivered, the only remaining NumPy surface is Buckets A and B —
 deferred *by design* because they need a Python runtime/object model or an external
 dependency, both of which break NumPP's clean-room, dependency-free, iOS/Android
 charter.
+
+### Foundation completion for a future C++ SciPy port (`numpy-foundation-completion`)
+NumPP is intended as the **NumPy-equivalent base** that a separate C++ SciPy port
+("SciPP") will build on. Boundary rule: `numpy.*` → NumPP, `scipy.*` → SciPP. A few
+genuine `numpy.*` primitives a SciPP leans on are still missing (none of them
+Bucket A/B), tracked in the `numpy-foundation-completion` change:
+
+| Tier | Missing | Note |
+|------|---------|------|
+| 1 | `finfo`/`iinfo` | machine limits (eps/tiny/max/min/resolution) — used pervasively for tolerances |
+| 1 | `isclose`, `isposinf`, `isneginf` | elementwise predicates (only the `allclose` reduce exists) |
+| 1 | `trapz`/`trapezoid` | the one integrator that lives in `numpy.*` (not `scipy.*`) |
+| 1 | `promote_types`, `min_scalar_type` | complete the casting set (`result_type`/`can_cast`/`common_type` exist) |
+| 2 | **batched/stacked linalg** | ⚠️ confirmed by spike: `det`/`inv`/`solve`/`cholesky`/`eig*`/`svd*` are **2-D only** and throw on `(k,n,n)` stacks; numpy operates over the last two axes |
+| 2 | `tensorsolve`/`tensorinv` | absent (despite an earlier doc claim) |
+| 2 | `einsum` ellipsis `...` | broadcasting subscripts not yet parsed |
+| 2 | `interp` `left`/`right`/`period` | the 1-D `interp` is bare-bones |
+
+`object` dtype, `recarray`, `frompyfunc` (Bucket A) are explicitly **out** — a C++
+SciPP uses templates/variants/`std::function`, so adding them would be divergence
+with no payoff. Metal stays a backend concern, not a `numpy.*` feature.
