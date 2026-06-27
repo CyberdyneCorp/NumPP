@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased — Bucket C: portable NumPy long-tail
+
+Closes the `add-portable-numpy-gaps` OpenSpec change — the set of NumPy features
+that were both still missing *and* implementable in dependency-free C++ (Buckets A
+and B remain deferred by design, as they need a Python runtime/object model or an
+external dependency). Nine features, each shipped as its own oracle-validated PR
+merged after CI green. **711 oracle cases / 1979 checks vs NumPy 2.1.3, 0
+divergences.**
+
+- **errstate / seterr / geterr** — floating-point error-state control
+  (divide/over/under/invalid → ignore/warn/raise/call), a scoped `errstate` guard,
+  `seterrcall`, and a `floating_point_error`; the binary/unary float kernels clear
+  and test the host FP flags and apply the active policy.
+- **shares_memory / may_share_memory** — bounds-based memory-overlap detection.
+- **ndindex / ndenumerate / nditer** — public C-order iteration API (correct for
+  non-contiguous/transposed/broadcasted views).
+- **array-API 2023 linalg aliases** — `matrix_transpose`, `permute_dims`,
+  `vecdot`, `vector_norm`, `matrix_norm`.
+- **busdaycalendar** — custom business-day calendars (`weekmask`/`holidays`)
+  threaded through `is_busday`/`busday_count`/`busday_offset`.
+- **einsum `optimize=` / `einsum_path`** — greedy pairwise contraction order.
+- **masked hard/soft masks** — `harden_mask`/`soften_mask`/`hardmask` and
+  mask-aware item assignment on `numpy.ma` MaskedArray.
+- **polynomial domain/window + fit** — domain→window mapping and class-level
+  `fit` on Chebyshev/Legendre/Hermite/HermiteE/Laguerre.
+- **variable-length StringDType** — a numpy-2.0-style variable-length UTF-8 string
+  array (standalone container; full ndarray-dtype integration deferred).
+
 ## 1.1.0 — 2026-06-27 — NumPy-parity expansion & real GPU acceleration
 
 Builds on 1.0.0 to cover the full practical NumPy surface and add real GPU

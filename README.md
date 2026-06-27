@@ -4,7 +4,7 @@
 [![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.1.0-brightgreen)](#)
-[![Tests](https://img.shields.io/badge/oracle%20checks-1861%20vs%20NumPy-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/oracle%20checks-1979%20vs%20NumPy-brightgreen)](#)
 [![GPU](https://img.shields.io/badge/GPU-OpenCL%20%2B%20CUDA-76B900?logo=nvidia&logoColor=white)](docs/gpu-backends.md)
 
 Modern **C++20 port of [NumPy](https://github.com/numpy/numpy)** — a clean-room
@@ -57,7 +57,7 @@ op ──► dispatcher ──► device present & size ≥ threshold? ──►
 | B | **einsum & polynomials** | `einsum` (subscript parser) + tensordot/cross/cond/multi_dot; legacy poly + `numpy.polynomial` (power/Chebyshev/Legendre/Hermite/Laguerre val/vander/roots/der/int + classes); convolve/correlate/interp; ufunc extras, stride tricks (`sliding_window_view`/`as_strided`/`piecewise`) |
 | C | **GPU / ma / interop / testing** | **real OpenCL + CUDA backends** (elementwise + reductions + tiled **GEMM**); `numpy.ma` masked arrays (arithmetic, per-axis reductions); `numpy.testing` asserts; **DLPack** + **memmap** |
 
-**1861 oracle checks across 649 cases pass against NumPy 2.1.3** with zero
+**1979 oracle checks across 711 cases pass against NumPy 2.1.3** with zero
 divergences, on clang and gcc, clean under AddressSanitizer/UBSan.
 
 ### Bit-exact randomness
@@ -141,19 +141,23 @@ just clean
 
 ## Scope & deferred items
 
-The full practical NumPy surface is covered and oracle-validated. Remaining gaps
-are deferred by design — mostly things needing **external dependencies** or
-**other platforms**, which would break the no-dependency, iOS/Android-portable
-goal. See [docs/numpy-parity-gaps.md](docs/numpy-parity-gaps.md) for the complete
-roadmap (now fully delivered) and per-item rationale.
+The full practical NumPy surface is covered and oracle-validated. The remaining
+NumPy long-tail is grouped by **why** it's missing; only Buckets A/B stay deferred.
+See [docs/numpy-parity-gaps.md](docs/numpy-parity-gaps.md) for the complete roadmap
+and per-item rationale.
 
-- **External-dep interop**: DEFLATE-compressed `savez_compressed` (zlib), an FFTW
-  FFT backend, `ctypeslib`. DLPack and `memmap` interop *are* shipped.
-- **Other GPU platforms**: Metal/Vulkan backends, device-resident buffers, a
-  cuBLAS/clBLAST GEMM path (OpenCL + CUDA backends with tiled GEMM *are* shipped).
-- **Long-tail features**: scientific-notation printing toggle (#11),
-  structured-dtype `.npy` (#14), `object` dtype, hard/soft masks, NumPy-2.0
-  `StringDType`, orthogonal-polynomial domain/window mapping.
+- **Bucket C — portable, charter-compatible: ✅ shipped.** `errstate`/`seterr`/
+  `geterr`, `shares_memory`/`may_share_memory`, `ndindex`/`ndenumerate`/`nditer`,
+  array-API linalg aliases (`matrix_transpose`/`vecdot`/`vector_norm`/
+  `matrix_norm`/`permute_dims`), `busdaycalendar` (weekmask/holidays), `einsum`
+  `optimize=`/`einsum_path`, masked hard/soft masks, polynomial domain/window+`fit`,
+  and a variable-length `StringDType`.
+- **Bucket A — needs a Python runtime/object model (deferred):** `object` dtype,
+  `recarray`, `frompyfunc`/multi-arg `vectorize`, `ctypeslib`, `np.matrix`.
+- **Bucket B — needs an external dependency (deferred):** DEFLATE-compressed
+  `savez_compressed` (zlib), an FFTW/pocketfft backend, `longdouble`/float128,
+  Metal/Vulkan. DLPack and `memmap` interop, and OpenCL + CUDA (tiled GEMM) *are*
+  shipped.
 
 Previously-tracked bit-exactness gaps are now **fixed**: ziggurat distributions
 (#8), `choice(replace=False)` (#7), standalone `MT19937` (#9) and Philox (#36)

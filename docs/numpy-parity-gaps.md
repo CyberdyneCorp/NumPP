@@ -14,9 +14,13 @@ Each ⬜ tier below is intended to become its own OpenSpec change.
 > **complete**.
 >
 > What remains is the genuine NumPy long-tail, grouped below by *why* it's missing
-> (§"What's left"). Only **Bucket C** (portable, no-dependency, charter-compatible)
-> is active work; Buckets A (needs a Python runtime/object model) and B (needs an
-> external dependency) are deferred by design.
+> (§"What's left"). **Bucket C** (portable, no-dependency, charter-compatible) is
+> now **fully delivered** (`add-portable-numpy-gaps`: errstate, memory-overlap,
+> iteration API, array-API linalg aliases, busdaycalendar, einsum optimize, masked
+> hard/soft masks, polynomial domain/window+fit, variable-length StringDType —
+> **711 oracle cases / 1979 checks, 0 failures**). Only Buckets A (needs a Python
+> runtime/object model) and B (needs an external dependency) remain, deferred by
+> design.
 
 ## What's already done (v1.0.0)
 
@@ -230,18 +234,23 @@ current accounting (verified against the source, not against older notes).
 | `longdouble` / `float128` | platform extended precision |
 | Metal / Vulkan GPU | other-platform backends (OpenCL + CUDA shipped) |
 
-### Bucket C — portable, charter-compatible (ACTIVE WORK → `add-portable-numpy-gaps`)
-These are both missing *and* implementable in dependency-free C++. Each is its own
-PR, oracle-validated, merged after CI is green.
+### Bucket C — portable, charter-compatible ✅ DELIVERED (`add-portable-numpy-gaps`)
+These were both missing *and* implementable in dependency-free C++. All nine
+shipped — each its own oracle-validated PR, merged after CI green.
 
-| Feature | What it is |
-|---------|------------|
-| `errstate`/`seterr`/`geterr` | floating-point error-state control |
-| `shares_memory`/`may_share_memory` | memory-overlap detection between arrays |
-| `nditer`/`ndenumerate`/`ndindex` | public iterator API |
-| array-API 2023 names | `matrix_transpose`, `vecdot`, `vector_norm`, `matrix_norm`, `permute_dims` |
-| `busdaycalendar` | custom business-day calendars (`weekmask`/`holidays`) |
-| `einsum(optimize=)` / `einsum_path` | contraction-order optimizer |
-| masked hard/soft masks | `harden_mask`/`soften_mask`/`hardmask` assignment semantics |
-| polynomial-class `domain`/`window` + `fit` | the remaining `numpy.polynomial` class surface |
-| NumPy-2.0 `StringDType` | variable-length UTF-8 strings |
+| Feature | What it is | Status |
+|---------|------------|:------:|
+| `errstate`/`seterr`/`geterr` | floating-point error-state control | ✅ |
+| `shares_memory`/`may_share_memory` | memory-overlap detection between arrays | ✅ |
+| `nditer`/`ndenumerate`/`ndindex` | public iterator API | ✅ |
+| array-API 2023 names | `matrix_transpose`, `vecdot`, `vector_norm`, `matrix_norm`, `permute_dims` | ✅ |
+| `busdaycalendar` | custom business-day calendars (`weekmask`/`holidays`) | ✅ |
+| `einsum(optimize=)` / `einsum_path` | greedy contraction-order optimizer | ✅ |
+| masked hard/soft masks | `harden_mask`/`soften_mask`/`hardmask` assignment semantics | ✅ |
+| polynomial-class `domain`/`window` + `fit` | the remaining `numpy.polynomial` class surface | ✅ |
+| NumPy-2.0 `StringDType` | variable-length UTF-8 strings (standalone container) | ✅ |
+
+With Bucket C delivered, the only remaining NumPy surface is Buckets A and B —
+deferred *by design* because they need a Python runtime/object model or an external
+dependency, both of which break NumPP's clean-room, dependency-free, iOS/Android
+charter.
