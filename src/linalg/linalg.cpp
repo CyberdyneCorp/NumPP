@@ -611,102 +611,69 @@ std::vector<T> gram_schmidt_extend(const std::vector<T>& cols, int m, int have, 
   return out;
 }
 
+// SVD by one-sided Jacobi (Hestenes), real and complex. Orthogonalize the columns
+// of A directly so the column norms are the singular values — keeping high
+// *relative* accuracy on small singular values, unlike forming A^H A. For complex
+// each pair is first phase-aligned (rotate one column so the off-diagonal Gram
+// entry becomes real) before the real Jacobi rotation. See #74.
 template <class T>
-SVDResult svd_impl(const ndarray& a, bool full_matrices, Kind k) {
-  const int m = static_cast<int>(a.shape()[0]), n = static_cast<int>(a.shape()[1]), kk = std::min(m, n);
-  const bool wide = m < n;
-  std::vector<T> A = to_vec<T>(a, k.compute);
-  const int gN = wide ? m : n;
-  std::vector<T> G(static_cast<size_t>(gN) * gN, T(0));
-  if (!wide) for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) { T s(0); for (int p = 0; p < m; ++p) s += conj_(A[p * n + i]) * A[p * n + j]; G[i * gN + j] = s; }
-  else       for (int i = 0; i < m; ++i) for (int j = 0; j < m; ++j) { T s(0); for (int p = 0; p < n; ++p) s += A[i * n + p] * conj_(A[j * n + p]); G[i * gN + j] = s; }
-  ndarray Gnd = from_vec<T>(G, {(int64_t)gN, (int64_t)gN}, k.compute, k.compute);
-  std::vector<double> ev; ndarray evec;
-  hermitian_eig(Gnd, ev, &evec, la_kind(k.compute));
-  std::vector<T> W = to_vec<T>(evec, k.compute);  // gN x gN, columns ascending
-  std::vector<double> sd(kk);
-  for (int i = 0; i < kk; ++i) { double e = ev[gN - 1 - i]; sd[i] = e > 0 ? std::sqrt(e) : 0.0; }
-
-  std::vector<T> Uout, Vout;
-  int ucols = full_matrices ? m : kk;
-  int vcols;
-  if (!wide) {
-    std::vector<T> V(static_cast<size_t>(n) * n);                  // n x n (kk == n)
-    for (int c = 0; c < n; ++c) for (int i = 0; i < n; ++i) V[i * n + c] = W[i * gN + (gN - 1 - c)];
-    std::vector<T> U(static_cast<size_t>(m) * kk, T(0));
-    for (int c = 0; c < kk; ++c) if (sd[c] > 0) for (int i = 0; i < m; ++i) { T s(0); for (int p = 0; p < n; ++p) s += A[i * n + p] * V[p * n + c]; U[i * kk + c] = s / T(sd[c]); }
-    Uout = full_matrices ? gram_schmidt_extend<T>(U, m, kk, m) : U;
-    Vout = V; vcols = n;
-  } else {
-    std::vector<T> U(static_cast<size_t>(m) * m);                  // m x m (kk == m)
-    for (int c = 0; c < m; ++c) for (int i = 0; i < m; ++i) U[i * m + c] = W[i * gN + (gN - 1 - c)];
-    std::vector<T> V(static_cast<size_t>(n) * kk, T(0));
-    for (int c = 0; c < kk; ++c) if (sd[c] > 0) for (int i = 0; i < n; ++i) { T s(0); for (int p = 0; p < m; ++p) s += conj_(A[p * n + i]) * U[p * m + c]; V[i * kk + c] = s / T(sd[c]); }
-    if (full_matrices) { Uout = U; Vout = gram_schmidt_extend<T>(V, n, kk, n); vcols = n; }
-    else { std::vector<T> Ur(static_cast<size_t>(m) * kk); for (int i = 0; i < m; ++i) for (int c = 0; c < kk; ++c) Ur[i * kk + c] = U[i * m + c]; Uout = Ur; Vout = V; vcols = kk; }
-  }
-  std::vector<T> Vh(static_cast<size_t>(vcols) * n);
-  for (int r = 0; r < vcols; ++r) for (int j = 0; j < n; ++j) Vh[r * n + j] = conj_(Vout[j * vcols + r]);
-
-  SVDResult out;
-  out.u = from_vec<T>(Uout, {(int64_t)m, (int64_t)ucols}, k.compute, k.out);
-  DType real_out = (k.out == kComplex64 || k.out == kFloat32) ? kFloat32 : kFloat64;
-  ndarray sArr(Shape{(int64_t)kk}, kFloat64, Order::C);
-  for (int i = 0; i < kk; ++i) sArr.set_item<double>({i}, sd[i]);
-  out.s = sArr.astype(real_out);
-  out.vh = from_vec<T>(Vh, {(int64_t)vcols, (int64_t)n}, k.compute, k.out);
-  return out;
-}
-
-double dtype_eps(DType d) { return (d == kFloat32) ? 1.1920928955078125e-7 : 2.220446049250313e-16; }
-
-// Real SVD by one-sided Jacobi (Hestenes): orthogonalize the columns of A
-// directly, so the column norms are the singular values. Unlike forming A^T A,
-// this keeps high *relative* accuracy on small singular values (numpy/LAPACK use
-// a bidiagonal SVD; this is the high-accuracy portable alternative). See #74.
-SVDResult svd_real_jacobi(const ndarray& a, bool full_matrices, Kind k) {
+SVDResult svd_jacobi(const ndarray& a, bool full_matrices, Kind k) {
   const int m = static_cast<int>(a.shape()[0]), n = static_cast<int>(a.shape()[1]);
   const int kk = std::min(m, n);
   const bool wide = m < n;
   const int M = wide ? n : m;  // tall orientation rows
   const int N = wide ? m : n;  // tall orientation cols (== kk)
 
-  std::vector<double> Av = to_vec<double>(a, kFloat64);  // m x n, row-major
-  std::vector<double> Wm(static_cast<size_t>(M) * N, 0.0);
-  if (!wide) Wm = Av;
-  else for (int i = 0; i < n; ++i) for (int j = 0; j < m; ++j) Wm[i * N + j] = Av[j * n + i];
+  std::vector<T> Av = to_vec<T>(a, k.compute);  // m x n, row-major
+  std::vector<T> Wm(static_cast<size_t>(M) * N, T(0));
+  if (!wide) Wm = Av;                            // tall: work on A
+  else for (int i = 0; i < n; ++i) for (int j = 0; j < m; ++j) Wm[i * N + j] = conj_(Av[j * n + i]);  // A^H
 
-  std::vector<double> V(static_cast<size_t>(N) * N, 0.0);
-  for (int i = 0; i < N; ++i) V[i * N + i] = 1.0;
+  std::vector<T> V(static_cast<size_t>(N) * N, T(0));
+  for (int i = 0; i < N; ++i) V[i * N + i] = T(1);
   for (int sweep = 0; sweep < 60; ++sweep) {
     double maxoff = 0.0;
     for (int i = 0; i < N; ++i)
       for (int j = i + 1; j < N; ++j) {
-        double aa = 0, bb = 0, cc = 0;
-        for (int r = 0; r < M; ++r) { double xi = Wm[r * N + i], xj = Wm[r * N + j]; aa += xi * xi; bb += xj * xj; cc += xi * xj; }
+        double aa = 0, bb = 0;
+        T cc(0);
+        for (int r = 0; r < M; ++r) {
+          T xi = Wm[r * N + i], xj = Wm[r * N + j];
+          aa += std::abs(xi) * std::abs(xi);
+          bb += std::abs(xj) * std::abs(xj);
+          cc += conj_(xi) * xj;
+        }
         if (aa == 0.0 || bb == 0.0) continue;
-        const double off = std::abs(cc) / std::sqrt(aa * bb);
+        const double magc = std::abs(cc);
+        const double off = magc / std::sqrt(aa * bb);
         if (off > maxoff) maxoff = off;
         if (off < 1e-300) continue;
-        const double zeta = (bb - aa) / (2.0 * cc);
+        // Phase-align column j so the off-diagonal becomes real (= magc).
+        const T w = conj_(cc) / T(magc);
+        for (int r = 0; r < M; ++r) Wm[r * N + j] = Wm[r * N + j] * w;
+        for (int r = 0; r < N; ++r) V[r * N + j] = V[r * N + j] * w;
+        // Real Jacobi rotation on the now phase-aligned columns.
+        const double zeta = (bb - aa) / (2.0 * magc);
         const double t = (zeta >= 0 ? 1.0 : -1.0) / (std::abs(zeta) + std::sqrt(1.0 + zeta * zeta));
         const double cs = 1.0 / std::sqrt(1.0 + t * t), sn = cs * t;
-        for (int r = 0; r < M; ++r) { double xi = Wm[r * N + i], xj = Wm[r * N + j]; Wm[r * N + i] = cs * xi - sn * xj; Wm[r * N + j] = sn * xi + cs * xj; }
-        for (int r = 0; r < N; ++r) { double vi = V[r * N + i], vj = V[r * N + j]; V[r * N + i] = cs * vi - sn * vj; V[r * N + j] = sn * vi + cs * vj; }
+        for (int r = 0; r < M; ++r) { T xi = Wm[r * N + i], xj = Wm[r * N + j]; Wm[r * N + i] = cs * xi - sn * xj; Wm[r * N + j] = sn * xi + cs * xj; }
+        for (int r = 0; r < N; ++r) { T vi = V[r * N + i], vj = V[r * N + j]; V[r * N + i] = cs * vi - sn * vj; V[r * N + j] = sn * vi + cs * vj; }
       }
     if (maxoff < 1e-15) break;
   }
 
-  std::vector<double> sig(N, 0.0), UT(static_cast<size_t>(M) * N, 0.0);
+  std::vector<double> sig(N, 0.0);
+  std::vector<T> UT(static_cast<size_t>(M) * N, T(0));
   for (int j = 0; j < N; ++j) {
-    double s = 0; for (int r = 0; r < M; ++r) s += Wm[r * N + j] * Wm[r * N + j];
-    s = std::sqrt(s); sig[j] = s;
-    if (s > 0) for (int r = 0; r < M; ++r) UT[r * N + j] = Wm[r * N + j] / s;
+    double s2 = 0; for (int r = 0; r < M; ++r) { double aj = std::abs(Wm[r * N + j]); s2 += aj * aj; }
+    double s = std::sqrt(s2); sig[j] = s;
+    if (s > 0) for (int r = 0; r < M; ++r) UT[r * N + j] = Wm[r * N + j] / T(s);
   }
   std::vector<int> ord(N);
   for (int i = 0; i < N; ++i) ord[i] = i;
   std::sort(ord.begin(), ord.end(), [&](int x, int y) { return sig[x] > sig[y]; });
-  std::vector<double> sigS(N), UTS(static_cast<size_t>(M) * N), VS(static_cast<size_t>(N) * N);
+  std::vector<double> sigS(N);
+  std::vector<T> UTS(static_cast<size_t>(M) * N), VS(static_cast<size_t>(N) * N);
   for (int c = 0; c < N; ++c) {
     sigS[c] = sig[ord[c]];
     for (int r = 0; r < M; ++r) UTS[r * N + c] = UT[r * N + ord[c]];
@@ -714,43 +681,46 @@ SVDResult svd_real_jacobi(const ndarray& a, bool full_matrices, Kind k) {
   }
 
   SVDResult out;
-  DType real_out = (k.out == kFloat32) ? kFloat32 : kFloat64;
+  DType real_out = (k.out == kComplex64 || k.out == kFloat32) ? kFloat32 : kFloat64;
   ndarray sArr(Shape{static_cast<int64_t>(kk)}, kFloat64, Order::C);
   for (int i = 0; i < kk; ++i) sArr.set_item<double>({i}, sigS[i]);
   out.s = sArr.astype(real_out);
 
-  auto transpose_to = [&](const std::vector<double>& src, int rows, int cols) {
-    std::vector<double> t(static_cast<size_t>(cols) * rows);
-    for (int r = 0; r < cols; ++r) for (int j = 0; j < rows; ++j) t[r * rows + j] = src[j * cols + r];
-    return t;
+  auto conj_T = [&](const std::vector<T>& src, int rows, int cols) {  // conjugate-transpose
+    std::vector<T> tt(static_cast<size_t>(cols) * rows);
+    for (int r = 0; r < cols; ++r) for (int j = 0; j < rows; ++j) tt[r * rows + j] = conj_(src[j * cols + r]);
+    return tt;
   };
 
-  if (!wide) {  // A = UTS (m x kk) * diag * VS^T (n x n)
+  if (!wide) {  // A = UTS (m x kk) * diag * VS^H (n x n)
     const int ucols = full_matrices ? m : kk;
-    std::vector<double> U = full_matrices ? gram_schmidt_extend<double>(UTS, m, kk, m) : UTS;
-    out.u = from_vec<double>(U, {static_cast<int64_t>(m), static_cast<int64_t>(ucols)}, kFloat64, k.out);
-    out.vh = from_vec<double>(transpose_to(VS, n, n), {static_cast<int64_t>(n), static_cast<int64_t>(n)}, kFloat64, k.out);
-  } else {  // A = (tall)^T = VS (m x m) * diag * UTS^T
-    out.u = from_vec<double>(VS, {static_cast<int64_t>(m), static_cast<int64_t>(m)}, kFloat64, k.out);
+    std::vector<T> U = full_matrices ? gram_schmidt_extend<T>(UTS, m, kk, m) : UTS;
+    out.u = from_vec<T>(U, {static_cast<int64_t>(m), static_cast<int64_t>(ucols)}, k.compute, k.out);
+    out.vh = from_vec<T>(conj_T(VS, n, n), {static_cast<int64_t>(n), static_cast<int64_t>(n)}, k.compute, k.out);
+  } else {  // A = (tall)^H = VS (m x m) * diag * UTS^H
+    out.u = from_vec<T>(VS, {static_cast<int64_t>(m), static_cast<int64_t>(m)}, k.compute, k.out);
     if (full_matrices) {
-      std::vector<double> Uext = gram_schmidt_extend<double>(UTS, n, kk, n);  // n x n
-      out.vh = from_vec<double>(transpose_to(Uext, n, n), {static_cast<int64_t>(n), static_cast<int64_t>(n)}, kFloat64, k.out);
-    } else {  // Vh = UTS^T (kk x n); UTS is n x m row-major
-      std::vector<double> Vh(static_cast<size_t>(kk) * n);
-      for (int r = 0; r < kk; ++r) for (int j = 0; j < n; ++j) Vh[r * n + j] = UTS[j * N + r];
-      out.vh = from_vec<double>(Vh, {static_cast<int64_t>(kk), static_cast<int64_t>(n)}, kFloat64, k.out);
+      std::vector<T> Uext = gram_schmidt_extend<T>(UTS, n, kk, n);  // n x n
+      out.vh = from_vec<T>(conj_T(Uext, n, n), {static_cast<int64_t>(n), static_cast<int64_t>(n)}, k.compute, k.out);
+    } else {  // Vh = UTS^H (kk x n); UTS is n x m row-major
+      std::vector<T> Vh(static_cast<size_t>(kk) * n);
+      for (int r = 0; r < kk; ++r) for (int j = 0; j < n; ++j) Vh[r * n + j] = conj_(UTS[j * N + r]);
+      out.vh = from_vec<T>(Vh, {static_cast<int64_t>(kk), static_cast<int64_t>(n)}, k.compute, k.out);
     }
   }
   return out;
 }
+
+double dtype_eps(DType d) { return (d == kFloat32) ? 1.1920928955078125e-7 : 2.220446049250313e-16; }
+
 }  // namespace
 
 SVDResult svd(const ndarray& a, bool full_matrices) {
   if (a.ndim() > 2) return batched::svd(a, full_matrices);
   if (a.ndim() != 2) throw not_implemented_error("svd requires a 2-D array");
   Kind k = la_kind(a.dtype());
-  if (k.cmplx) return svd_impl<std::complex<double>>(a, full_matrices, k);
-  return svd_real_jacobi(a, full_matrices, k);
+  if (k.cmplx) return svd_jacobi<std::complex<double>>(a, full_matrices, k);
+  return svd_jacobi<double>(a, full_matrices, k);
 }
 ndarray svdvals(const ndarray& a) { return svd(a, false).s; }
 
