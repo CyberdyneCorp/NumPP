@@ -51,6 +51,7 @@ add_executable(numpp_tests
     test_umath_mined.cpp
     test_umath_mined2.cpp
     test_umath_mined3.cpp
+    test_umath_mined4.cpp
     test_ufunc2.cpp
     test_ufunc3.cpp
     test_linalg.cpp

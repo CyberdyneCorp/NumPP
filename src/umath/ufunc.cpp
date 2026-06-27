@@ -81,9 +81,22 @@ enum class BinOp { Add, Sub, Mul, Div, FloorDiv, Mod, Power, Min, Max, And, Or, 
 template <class T>
 T int_floordiv(T x, T y) {
   if (y == 0) return 0;                       // numpy: int //0 -> 0 (with warning)
+  if constexpr (std::is_signed_v<T>) {
+    // MIN / -1 overflows (SIGFPE on x86); numpy wraps to MIN.
+    if (x == std::numeric_limits<T>::min() && y == T(-1)) return x;
+  }
   T q = x / y, r = x % y;
   if (r != 0 && ((r < 0) != (y < 0))) --q;    // round toward -inf
   return q;
+}
+
+template <class T>
+T int_mod(T x, T y) {
+  if (y == 0) return 0;                       // numpy: int %0 -> 0
+  if constexpr (std::is_signed_v<T>) {
+    if (x == std::numeric_limits<T>::min() && y == T(-1)) return 0;  // x % -1 == 0; avoid overflow
+  }
+  return static_cast<T>(x - int_floordiv<T>(x, y) * y);
 }
 
 template <class T>
@@ -104,7 +117,7 @@ T bin_scalar(BinOp op, T x, T y) {
       case BinOp::Mul: return static_cast<T>(x * y);
       case BinOp::Div: return static_cast<T>(x / y);
       case BinOp::FloorDiv: return int_floordiv<T>(x, y);
-      case BinOp::Mod: return y == 0 ? T(0) : static_cast<T>(x - int_floordiv<T>(x, y) * y);  // numpy: int %0 -> 0
+      case BinOp::Mod: return int_mod<T>(x, y);
       case BinOp::Power:
         if constexpr (std::is_signed_v<T>) {
           if (y < 0) throw value_error("Integers to negative integer powers are not allowed.");
