@@ -41,6 +41,7 @@ add_executable(numpp_tests
     test_ufunc2.cpp
     test_ufunc3.cpp
     test_linalg.cpp
+    test_array_api.cpp
     test_linalg2.cpp
     test_linalg3.cpp
     test_linalg4.cpp

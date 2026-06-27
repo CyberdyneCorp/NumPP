@@ -26,6 +26,7 @@
 #include "numpp/umath/ufunc.hpp"
 #include "numpp/umath/errstate.hpp"
 #include "numpp/linalg/linalg.hpp"
+#include "numpp/linalg/array_api.hpp"
 #include "numpp/fft/fft.hpp"
 #include "numpp/random/random.hpp"
 #include "numpp/random/distributions.hpp"
