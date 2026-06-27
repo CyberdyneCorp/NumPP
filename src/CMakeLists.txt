@@ -34,6 +34,7 @@ add_library(numpp
     lib/striding.cpp
     lib/striding2.cpp
     lib/memory_overlap.cpp
+    lib/iteration.cpp
     io/npy.cpp
     textio/textio.cpp
     io/npz.cpp
