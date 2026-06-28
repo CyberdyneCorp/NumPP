@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.8 — 2026-06-27 — test-suite mining: set-ops/histograms/type-check/shape/index/stride coverage
+
+Extends the live-NumPy-oracle mining campaign across six further NumPy test files —
+no behavior change, pure validation-surface expansion. **931 cases / 2477 checks, 0
+divergences.** No new divergences found (these layers are robust):
+
+- **`test_arraysetops.py`** — `unique` (values, counts, return_index, return_inverse),
+  `intersect1d`/`union1d`/`setdiff1d`, `isin`.
+- **`test_histograms.py`** — `histogram` (counts + edges, auto and explicit range),
+  `histogram_bin_edges`, `histogram2d`.
+- **`test_type_check.py`** — `nan_to_num` (default and custom nan/posinf/neginf),
+  `angle`, `isreal`/`iscomplex`, `real_if_close`.
+- **`test_shape_base.py`** — `array_split` (even and uneven division), `tile`,
+  `repeat` (flat and per-axis), `stack`/`concatenate`/`vstack`/`hstack`/`dstack`/
+  `column_stack`.
+- **`test_index_tricks.py`** — `ravel_multi_index`/`unravel_index` (C order),
+  `tril_indices`/`triu_indices` (with offsets), `diag_indices`.
+- **`test_stride_tricks.py`** — `sliding_window_view` (1-D and 2-D windows),
+  `broadcast_to`, `broadcast_arrays`.
+
 ## 1.3.7 — 2026-06-27 — test_numeric/einsum/function_base/polynomial mining + roots() complex-root fix
 
 Continues mining NumPy's own test suites through the live-NumPy oracle across the
