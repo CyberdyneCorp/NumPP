@@ -9,6 +9,7 @@
 #include <cmath>
 #include <complex>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -87,44 +88,124 @@ std::vector<std::string> fmt_int_kind(const ndarray& c, int64_t n) {
   for (auto& s : out) s = rjust(s, w);
   return out;
 }
-std::vector<std::string> fmt_float_kind(const ndarray& c, int64_t n) {
+// numpy switches a float column to scientific notation (FloatingFormat) based on
+// the finite, nonzero magnitudes: when the largest is >= 1e8, the smallest is
+// < 1e-4, or their ratio exceeds 1000.
+bool float_use_sci(const std::vector<double>& vals) {
+  double mx = 0, mn = 0;
+  bool any = false;
+  for (double v : vals) {
+    if (!std::isfinite(v) || v == 0.0) continue;
+    const double a = std::fabs(v);
+    if (!any) { mx = mn = a; any = true; }
+    else { mx = std::max(mx, a); mn = std::min(mn, a); }
+  }
+  if (!any) return false;
+  return mx >= 1e8 || mn < 1e-4 || mx / mn > 1000.0;
+}
+
+// Shortest round-tripping "%e" with at most `maxp` fractional digits (numpy's
+// default maxprec floatmode: shortest unique, capped at precision).
+std::string shortest_e_capped(double x, int maxp) {
+  char buf[64];
+  for (int p = 0; p <= maxp; ++p) {
+    std::snprintf(buf, sizeof(buf), "%.*e", p, x);
+    if (std::strtod(buf, nullptr) == x) return buf;
+  }
+  std::snprintf(buf, sizeof(buf), "%.*e", maxp, x);
+  return buf;
+}
+
+// Format a column of doubles in aligned scientific notation, matching numpy:
+// one leading digit, a common fractional width, a signed exponent of common
+// width (>= 2 digits), and right-justification across the column.
+std::vector<std::string> fmt_float_sci(const std::vector<double>& vals) {
+  constexpr int kPrec = 8;
+  const size_t n = vals.size();
+  std::vector<std::string> sign(n), lead(n), frac(n), esign(n), edig(n), special(n);
+  size_t fracw = 0, edigw = 2;
+  for (size_t i = 0; i < n; ++i) {
+    const double v = vals[i];
+    if (std::isnan(v)) { special[i] = "nan"; continue; }
+    if (std::isinf(v)) { special[i] = v < 0 ? "-inf" : "inf"; continue; }
+    sign[i] = std::signbit(v) ? "-" : "";
+    const std::string e = shortest_e_capped(std::fabs(v), kPrec);
+    const size_t ep = e.find('e');
+    const std::string m = e.substr(0, ep), ex = e.substr(ep + 1);
+    const size_t dot = m.find('.');
+    lead[i] = dot == std::string::npos ? m : m.substr(0, dot);
+    frac[i] = dot == std::string::npos ? "" : m.substr(dot + 1);
+    esign[i] = ex[0] == '-' ? "-" : "+";
+    const size_t exi = (ex[0] == '+' || ex[0] == '-') ? 1 : 0;
+    const std::string ed = ex.substr(exi);
+    const size_t nz = ed.find_first_not_of('0');
+    edig[i] = nz == std::string::npos ? "0" : ed.substr(nz);
+    fracw = std::max(fracw, frac[i].size());
+    edigw = std::max(edigw, edig[i].size());
+  }
+  std::vector<std::string> out(n);
+  size_t w = 0;
+  for (size_t i = 0; i < n; ++i) {
+    if (!special[i].empty()) out[i] = special[i];
+    else {
+      std::string fr = frac[i]; fr.resize(fracw, '0');
+      std::string ed = std::string(edigw - edig[i].size(), '0') + edig[i];
+      out[i] = sign[i] + lead[i] + "." + fr + "e" + esign[i] + ed;
+    }
+    w = std::max(w, out[i].size());
+  }
+  for (auto& s : out) s = rjust(s, w);
+  return out;
+}
+
+// Format a column of doubles the way numpy does: scientific (aligned) when the
+// magnitudes warrant it, otherwise fixed with an aligned decimal point. Shared by
+// the real float kind and by each part (real / imag magnitude) of the complex kind.
+std::vector<std::string> fmt_double_column(const std::vector<double>& vals) {
+  if (float_use_sci(vals)) return fmt_float_sci(vals);
+  const size_t n = vals.size();
   std::vector<std::string> out(n), lefts(n), rights(n), specials(n);
   size_t pl = 0, pr = 0;
-  auto val = [&](int64_t i) -> double {
-    if (c.dtype() == kFloat16) return static_cast<double>(static_cast<float>(c.typed_data<half>()[i]));
-    if (c.dtype() == kFloat32) return static_cast<double>(c.typed_data<float>()[i]);
-    return c.typed_data<double>()[i];
-  };
-  for (int64_t i = 0; i < n; ++i) {
-    std::string s = fmt_fixed(val(i));
+  for (size_t i = 0; i < n; ++i) {
+    std::string s = fmt_fixed(vals[i]);
     if (s == "nan" || s == "inf" || s == "-inf") { specials[i] = s; continue; }
     size_t dot = s.find('.');
     lefts[i] = s.substr(0, dot); rights[i] = s.substr(dot + 1);
     pl = std::max(pl, lefts[i].size()); pr = std::max(pr, rights[i].size());
   }
   const size_t w = pl + 1 + pr;
-  for (int64_t i = 0; i < n; ++i)
+  for (size_t i = 0; i < n; ++i)
     out[i] = !specials[i].empty() ? rjust(specials[i], w) : rjust(lefts[i], pl) + "." + ljust(rights[i], pr);
   return out;
 }
-std::vector<std::string> fmt_complex_kind(const ndarray& c, int64_t n) {
-  std::vector<std::string> out(n), rL(n), rR(n), iL(n), iR(n), sign(n);
-  size_t rpl = 0, rpr = 0, ipl = 0, ipr = 0;
-  auto split = [](const std::string& s, size_t& pl, size_t& pr, std::string& L, std::string& R) {
-    size_t dot = s.find('.');
-    if (dot == std::string::npos) { L = s; R = ""; } else { L = s.substr(0, dot); R = s.substr(dot + 1); }
-    pl = std::max(pl, L.size()); pr = std::max(pr, R.size());
+
+std::vector<std::string> fmt_float_kind(const ndarray& c, int64_t n) {
+  auto val = [&](int64_t i) -> double {
+    if (c.dtype() == kFloat16) return static_cast<double>(static_cast<float>(c.typed_data<half>()[i]));
+    if (c.dtype() == kFloat32) return static_cast<double>(c.typed_data<float>()[i]);
+    return c.typed_data<double>()[i];
   };
+  std::vector<double> vals(n);
+  for (int64_t i = 0; i < n; ++i) vals[i] = val(i);
+  return fmt_double_column(vals);
+}
+std::vector<std::string> fmt_complex_kind(const ndarray& c, int64_t n) {
+  // numpy formats the real parts and the imaginary magnitudes as two independent
+  // columns (each may pick fixed or scientific on its own), then joins them with
+  // the imaginary sign and a trailing 'j'.
+  std::vector<double> reals(n), imags(n);
+  std::vector<std::string> sign(n), out(n);
   for (int64_t i = 0; i < n; ++i) {
     std::complex<double> z = c.dtype() == kComplex64
         ? std::complex<double>(c.typed_data<std::complex<float>>()[i].real(), c.typed_data<std::complex<float>>()[i].imag())
         : c.typed_data<std::complex<double>>()[i];
-    split(fmt_fixed(z.real()), rpl, rpr, rL[i], rR[i]);
-    split(fmt_fixed(std::abs(z.imag())), ipl, ipr, iL[i], iR[i]);
+    reals[i] = z.real();
+    imags[i] = std::abs(z.imag());
     sign[i] = (z.imag() < 0 || (z.imag() == 0 && std::signbit(z.imag()))) ? "-" : "+";
   }
-  for (int64_t i = 0; i < n; ++i)
-    out[i] = rjust(rL[i], rpl) + "." + ljust(rR[i], rpr) + sign[i] + rjust(iL[i], ipl) + "." + ljust(iR[i], ipr) + "j";
+  std::vector<std::string> rcol = fmt_double_column(reals);
+  std::vector<std::string> icol = fmt_double_column(imags);
+  for (int64_t i = 0; i < n; ++i) out[i] = rcol[i] + sign[i] + icol[i] + "j";
   return out;
 }
 std::vector<std::string> element_strings(const ndarray& a) {
