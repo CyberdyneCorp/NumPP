@@ -43,7 +43,29 @@
 ## Tier C — large / specialized subsystems (achievable subset delivered via tier-c-partial)
 - [x] add-masked-arrays: numpy.ma MaskedArray + constructors, filled/compressed/count, flat AND per-axis sum/prod/mean/min/max/count, arithmetic (add/sub/mul/div), comparison/range masks, getmask/getdata. Deferred: hard/soft masks, masked records
 - [x] add-object-records-testing: numpy.testing (array_equal/array_equiv/assert_*) ✅; structured field access already existed; **dtype=object arrays deferred** (type-erased storage)
-- [x] add-datetime-completion: is_busday/busday_count/busday_offset, datetime_as_string ✅; full unit conversion & structured-dtype .npy (#14) deferred
-- [x] add-gpu-backends: **real OpenCL + CUDA backends incl. GPU GEMM/matmul, a device buffer pool and a tiled shared-memory GEMM** (validated on NVIDIA RTX 5060 / sm_120; ~5-8x over CPU on fp64 matmul, 109 GFLOP/s @ 1024³; CUDA uses PTX-virtual arch so nvcc 12.0 JITs to sm_120). Deferred: Metal/Vulkan, true device-resident ndarrays, pinned/unified memory, cuBLAS/clBLAST path
+- [x] add-datetime-completion: is_busday/busday_count/busday_offset, datetime_as_string ✅; structured-dtype .npy (#14) **delivered v1.4.0**; full datetime unit conversion still deferred
+- [x] add-gpu-backends: **real OpenCL + CUDA backends incl. GPU GEMM/matmul, a device buffer pool and a tiled shared-memory GEMM** (validated on NVIDIA RTX 5060 / sm_120; ~5-8x over CPU on fp64 matmul, 109 GFLOP/s @ 1024³; CUDA uses PTX-virtual arch so nvcc 12.0 JITs to sm_120). **v1.5.0** added the ScyPP acceleration slots (csr_spmv/cdist_euclidean/correlate1d, #99/#106). Deferred: Metal/Vulkan (#135), SpMM (#134), CSR-adaptive SpMV (#136), GPU hardware CI (#135), true device-resident ndarrays, pinned/unified memory, cuBLAS/clBLAST path
 - [x] add-bitexact-longtail: **COMPLETE** — Philox (#36), MT19937 (#9), ziggurat standard_normal/exponential (#8) and choice(replace=False) (#7) all bit-exact with numpy. (Random module now matches numpy across PCG64, SFC64, Philox, MT19937, ziggurat normals/exponentials, normal, and choice-without-replacement.)
 - [x] add-interop-misc: **DLPack** (to_dlpack/from_dlpack, zero-copy) and **memmap** (mmap-backed arrays) delivered. Deferred (external deps, conflict with no-dep goal): DEFLATE savez_compressed (zlib), FFTW, ctypeslib
+
+---
+
+## Open backlog — tracked as GitHub issues (continue later)
+Each becomes its own OpenSpec change when picked up. Filed with full context
+(where, repro, suggested approach) so work can resume cold.
+
+### numpy.* parity gaps
+- [ ] complex min/max — amin/amax/minimum/maximum + reductions on complex (lexicographic) — #129
+- [ ] dot/inner/kron for ndim>2 (N-D contraction / Kronecker) — #130
+- [ ] keyword gaps: `take(mode=wrap/clip)`, `ravel_multi_index`/`unravel_index(order='F')`, `repeat(per-element counts)` — #131
+- [ ] `histogram(density=, weights=)` — #132
+- [ ] `arange` integer precision beyond 2^53 (integer-domain fill) — #133
+
+### Device acceleration (shared GpuVTable substrate, OpenSpec `gpu-kernels`)
+- [ ] CSR SpMM (sparse × dense matrix) slot — follow-up to #99 — #134
+- [ ] Metal backend + GPU hardware CI validation for the device kernels — #135
+- [ ] vector/CSR-adaptive SpMV variant (performance) — #136
+
+### Deferred *by design* (need a Python runtime/object model or external dep — see docs/numpy-parity-gaps.md Buckets A/B)
+- object dtype, recarray, frompyfunc/multi-arg vectorize, np.matrix, ctypeslib
+- savez_compressed real DEFLATE (zlib), FFTW backend, longdouble/float128
