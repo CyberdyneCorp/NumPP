@@ -111,8 +111,8 @@ endif()
 target_compile_definitions(numpp PRIVATE NUMPP_BUILDING)
 
 target_include_directories(numpp PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/generated>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -144,19 +144,21 @@ install(TARGETS numpp EXPORT NumPPTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/numpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hpp")
-install(FILES ${CMAKE_BINARY_DIR}/generated/numpp/version.hpp
-              ${CMAKE_BINARY_DIR}/generated/numpp/backend/config.hpp
+# Install both *.hpp and *.h: the umbrella numpp/numpp.hpp reaches the C public
+# header numpp/interop/dlpack.h, so a "*.hpp"-only rule left it out (#107).
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/numpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+install(FILES ${PROJECT_BINARY_DIR}/generated/numpp/version.hpp
+              ${PROJECT_BINARY_DIR}/generated/numpp/backend/config.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/numpp)
 install(EXPORT NumPPTargets NAMESPACE numpp:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NumPP)
 
 configure_package_config_file(
-    ${CMAKE_SOURCE_DIR}/cmake/NumPPConfig.cmake.in
-    ${CMAKE_BINARY_DIR}/NumPPConfig.cmake
+    ${PROJECT_SOURCE_DIR}/cmake/NumPPConfig.cmake.in
+    ${PROJECT_BINARY_DIR}/NumPPConfig.cmake
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NumPP)
 write_basic_package_version_file(
-    ${CMAKE_BINARY_DIR}/NumPPConfigVersion.cmake
+    ${PROJECT_BINARY_DIR}/NumPPConfigVersion.cmake
     VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion)
-install(FILES ${CMAKE_BINARY_DIR}/NumPPConfig.cmake ${CMAKE_BINARY_DIR}/NumPPConfigVersion.cmake
+install(FILES ${PROJECT_BINARY_DIR}/NumPPConfig.cmake ${PROJECT_BINARY_DIR}/NumPPConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NumPP)

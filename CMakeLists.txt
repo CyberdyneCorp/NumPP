@@ -17,7 +17,10 @@ option(NUMPP_BUILD_BENCHMARKS   "Build benchmarks"                  OFF)
 option(NUMPP_BUILD_DOCS         "Build Doxygen API documentation"   OFF)
 option(NUMPP_ENABLE_ASAN        "Enable AddressSanitizer"           OFF)
 option(NUMPP_ENABLE_UBSAN       "Enable UndefinedBehaviorSanitizer" OFF)
-option(NUMPP_WARNINGS_AS_ERRORS "Treat warnings as errors"          ON)
+# Default OFF so a from-source build never fails on a compiler/libc warning the
+# project can't control (e.g. GCC 13/glibc on datetime.cpp, #109). CI turns it
+# back ON with -DNUMPP_WARNINGS_AS_ERRORS=ON to keep catching regressions.
+option(NUMPP_WARNINGS_AS_ERRORS "Treat warnings as errors"          OFF)
 
 # Optional acceleration backends — all OFF by default. A build with every flag
 # OFF is the portable mobile (iOS/Android) baseline and must be fully functional.
@@ -28,6 +31,15 @@ option(NUMPP_WITH_VULKAN        "Enable optional Vulkan GPU backend" OFF)
 option(NUMPP_WITH_CUDA          "Enable optional CUDA GPU backend"  OFF)
 option(NUMPP_WITH_OPENCL        "Enable optional OpenCL GPU backend" OFF)
 option(NUMPP_WITH_REFGPU        "Enable CPU-reference GPU device (testing)" OFF)
+
+# Never publish a build-tree package to the user CMake registry (~/.cmake/packages):
+# a stale build dir there can silently shadow a pinned installed prefix in a
+# downstream find_package(NumPP) (#109). We don't call export(PACKAGE), so this is
+# defensive — and only when NumPP is the top-level project, so we don't clobber a
+# consumer's own setting when embedded via add_subdirectory.
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY ON)
+endif()
 
 # Enable the CUDA language only when the CUDA backend is requested. PTX-virtual
 # architectures (set on the numpp target) let an older nvcc JIT to newer GPUs.
