@@ -18,7 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.x' }
       - run: pip install numpy            # NumPy oracle for the test suite
-      - run: cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      # -Werror defaults OFF for from-source consumers (#109); CI re-enables it.
+      - run: cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DNUMPP_WARNINGS_AS_ERRORS=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
@@ -29,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.x' }
       - run: pip install numpy
-      - run: cmake -S . -B build -DNUMPP_ENABLE_ASAN=ON -DNUMPP_ENABLE_UBSAN=ON
+      - run: cmake -S . -B build -DNUMPP_ENABLE_ASAN=ON -DNUMPP_ENABLE_UBSAN=ON -DNUMPP_WARNINGS_AS_ERRORS=ON
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
@@ -66,6 +67,19 @@ jobs:
       - name: Build core (iOS)
         if: matrix.name == 'ios'
         run: cmake --build build-ios
+
+  # Downstream consumption: install + find_package, and add_subdirectory embedding,
+  # built with -Werror on. Regression guard for #107/#108/#109.
+  packaging:
+    name: packaging / ${{ matrix.cxx }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [ clang++, g++ ]
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tests/packaging/smoke.sh ${{ matrix.cxx }}
 
   openspec:
     runs-on: ubuntu-latest

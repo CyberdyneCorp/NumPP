@@ -70,7 +70,10 @@ std::string format_datetime(DType dt, int64_t value) {
   if (rem < 0) { rem += 86400; --days; }
   int64_t y, mo, d;
   civil_from_days(days, y, mo, d);
-  char buf[64];
+  // Sized for the worst case: a full-range 64-bit year (up to 20 chars) plus the
+  // "-MM-DDTHH:MM:SS" tail, so snprintf can never truncate (silences
+  // -Wformat-truncation under GCC -O FORTIFY; see #109).
+  char buf[96];
   if (unit == 'D') std::snprintf(buf, sizeof(buf), "%04lld-%02lld-%02lld", (long long)y, (long long)mo, (long long)d);
   else std::snprintf(buf, sizeof(buf), "%04lld-%02lld-%02lldT%02lld:%02lld:%02lld", (long long)y, (long long)mo, (long long)d,
                      (long long)(rem / 3600), (long long)((rem % 3600) / 60), (long long)(rem % 60));
