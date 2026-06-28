@@ -59,6 +59,7 @@ add_executable(numpp_tests
     test_nanfunctions_mined.cpp
     test_nanfunctions_mined2.cpp
     test_index_tricks_mined.cpp
+    test_stride_tricks_mined.cpp
     test_type_check_mined.cpp
     test_shape_base_mined.cpp
     test_arraysetops_mined.cpp
