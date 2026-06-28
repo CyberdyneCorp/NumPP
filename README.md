@@ -4,7 +4,7 @@
 [![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.4.0-brightgreen)](#)
-[![Tests](https://img.shields.io/badge/oracle%20checks-2569%20vs%20NumPy-brightgreen)](#)
+[![Tests](https://img.shields.io/badge/oracle%20checks-2607%20vs%20NumPy-brightgreen)](#)
 [![GPU](https://img.shields.io/badge/GPU-OpenCL%20%2B%20CUDA-76B900?logo=nvidia&logoColor=white)](docs/gpu-backends.md)
 
 Modern **C++20 port of [NumPy](https://github.com/numpy/numpy)** — a clean-room
@@ -57,7 +57,7 @@ op ──► dispatcher ──► device present & size ≥ threshold? ──►
 | B | **einsum & polynomials** | `einsum` (subscript parser) + tensordot/cross/cond/multi_dot; legacy poly + `numpy.polynomial` (power/Chebyshev/Legendre/Hermite/Laguerre val/vander/roots/der/int + classes); convolve/correlate/interp; ufunc extras, stride tricks (`sliding_window_view`/`as_strided`/`piecewise`) |
 | C | **GPU / ma / interop / testing** | **real OpenCL + CUDA backends** (elementwise + reductions + tiled **GEMM**); `numpy.ma` masked arrays (arithmetic, per-axis reductions); `numpy.testing` asserts; **DLPack** + **memmap** |
 
-**2569 oracle checks across 953 cases pass against NumPy 2.1.3** with zero
+**2607 oracle checks across 957 cases pass against NumPy 2.1.3** with zero
 divergences, on clang and gcc, clean under AddressSanitizer/UBSan.
 
 ### Bit-exact randomness
@@ -75,6 +75,14 @@ arithmetic, `sqrt`, reductions and **matmul** run on the GPU behind the same
 weak-vtable dispatch (validated on an NVIDIA RTX 5060; tiled shared-memory GEMM
 is ~5–8× the CPU at fp64). Element-wise ops are IEEE-exact vs the CPU path. The
 default build stays pure-CPU and dependency-free. See [docs/gpu-backends.md](docs/gpu-backends.md).
+
+The same `GpuVTable` also hosts **ScyPP acceleration primitives** — CSR sparse
+mat-vec (`csr_spmv`), pairwise distance (`cdist_euclidean`), and separable
+correlation (`correlate1d`) — whose high-level `scipy.*` API lives in the sibling
+[ScyPP](https://github.com/CyberdyneCorp/ScyPP) port. They are not part of NumPP's
+`numpy.*` surface; each has a portable CPU kernel and offloads through the shared
+device dispatch. The CPU-reference device backend (`-DNUMPP_WITH_REFGPU=ON`) proves
+the dispatch path end-to-end without GPU hardware.
 
 ## Build
 

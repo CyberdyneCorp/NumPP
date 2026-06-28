@@ -34,6 +34,20 @@ jobs:
       - run: cmake --build build
       - run: ctest --test-dir build --output-on-failure
 
+  # Reference 'device' backend: exercises the GPU-dispatch path (elementwise,
+  # reductions, GEMM, and the ScyPP slots: SpMV / cdist / correlate1d) on the CPU,
+  # asserting the device result equals the CPU result and last_backend()==Device.
+  refgpu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.x' }
+      - run: pip install numpy
+      - run: cmake -S . -B build -DNUMPP_WITH_REFGPU=ON -DNUMPP_WARNINGS_AS_ERRORS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure
+
   # Portability guard: the core must build with ALL backend flags OFF on the
   # mobile cross-compilation toolchains (no BLAS/LAPACK/GPU).
   mobile-no-accel:
