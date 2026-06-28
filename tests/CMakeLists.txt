@@ -58,6 +58,7 @@ add_executable(numpp_tests
     test_multiarray_mined4.cpp
     test_nanfunctions_mined.cpp
     test_nanfunctions_mined2.cpp
+    test_device_kernels.cpp
     test_struct_npy.cpp
     test_print_scientific.cpp
     test_axis_tuple_reductions.cpp

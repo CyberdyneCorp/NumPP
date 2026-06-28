@@ -1,7 +1,10 @@
 #include "numpp/backend/gpu_vtable.hpp"
 
+#include "scypp_kernels.hpp"
+
 #include <cmath>
 #include <complex>
+#include <cstdint>
 
 // CPU-reference "device" backend, compiled only when NUMPP_WITH_REFGPU=ON. It
 // implements the GPU vtable by running the same math on the host buffers, so its
@@ -83,7 +86,29 @@ bool gemm_impl(DTypeId dt, int64_t m, int64_t n, int64_t k, const void* A, const
   return false;
 }
 
-const GpuVTable g_vtable{"refgpu(cpu)", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl};
+// ScyPP acceleration slots — same shared CPU kernels as the dispatcher fallback,
+// so the "device" result is provably identical to the CPU result.
+bool csr_spmv_impl(DTypeId dt, int64_t rows, int64_t cols, int64_t nnz, const int64_t* indptr,
+                   const int64_t* indices, const void* data, const void* x, void* y) {
+  (void)cols; (void)nnz;
+  if (dt == DTypeId::Float32) { scypp_cpu::csr_spmv<float>(rows, indptr, indices, static_cast<const float*>(data), static_cast<const float*>(x), static_cast<float*>(y)); return true; }
+  if (dt == DTypeId::Float64) { scypp_cpu::csr_spmv<double>(rows, indptr, indices, static_cast<const double*>(data), static_cast<const double*>(x), static_cast<double*>(y)); return true; }
+  return false;
+}
+bool pairwise_sqdist_impl(DTypeId dt, int64_t m, int64_t n, int64_t dim, const void* A, const void* B, void* D) {
+  if (dt == DTypeId::Float32) { scypp_cpu::pairwise_sqdist<float>(m, n, dim, static_cast<const float*>(A), static_cast<const float*>(B), static_cast<float*>(D)); return true; }
+  if (dt == DTypeId::Float64) { scypp_cpu::pairwise_sqdist<double>(m, n, dim, static_cast<const double*>(A), static_cast<const double*>(B), static_cast<double*>(D)); return true; }
+  return false;
+}
+bool separable_corr1d_impl(DTypeId dt, int64_t lines, int64_t len, const void* in, const void* weights,
+                           int64_t klen, int64_t origin, int mode, double cval, void* out) {
+  if (dt == DTypeId::Float32) { scypp_cpu::separable_corr1d<float>(lines, len, static_cast<const float*>(in), static_cast<const float*>(weights), klen, origin, mode, cval, static_cast<float*>(out)); return true; }
+  if (dt == DTypeId::Float64) { scypp_cpu::separable_corr1d<double>(lines, len, static_cast<const double*>(in), static_cast<const double*>(weights), klen, origin, mode, cval, static_cast<double*>(out)); return true; }
+  return false;
+}
+
+const GpuVTable g_vtable{"refgpu(cpu)", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl,
+                         &csr_spmv_impl, &pairwise_sqdist_impl, &separable_corr1d_impl};
 
 }  // namespace
 

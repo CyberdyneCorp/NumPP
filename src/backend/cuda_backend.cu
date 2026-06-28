@@ -71,6 +71,52 @@ __global__ void k_gemm_tiled(long M, long N, long K, const T* A, const T* B, T* 
   if (row < M && col < N) C[row * N + col] = acc;
 }
 
+// ---- ScyPP acceleration kernels (CSR SpMV / pairwise sqdist / separable corr) ----
+__device__ inline long long npp_bound_index(long long i, long long len, int mode) {
+  if (i >= 0 && i < len) return i;
+  if (len == 1) return mode == 1 ? -1 : 0;
+  switch (mode) {
+    case 1: return -1;                                    // constant -> cval
+    case 2: return i < 0 ? 0 : len - 1;                   // nearest
+    case 4: { i %= len; if (i < 0) i += len; return i; }  // wrap
+    case 3: { long long p = 2 * len - 2; i %= p; if (i < 0) i += p; return i >= len ? p - i : i; }  // mirror
+    default: { long long p = 2 * len; i %= p; if (i < 0) i += p; return i >= len ? p - 1 - i : i; } // reflect
+  }
+}
+template <class T>
+__global__ void k_csr_spmv(long rows, const long long* indptr, const long long* indices,
+                           const T* data, const T* x, T* y) {
+  long i = blockIdx.x * (long)blockDim.x + threadIdx.x;
+  if (i >= rows) return;
+  T acc = T(0);
+  for (long long k = indptr[i]; k < indptr[i + 1]; ++k) acc += data[k] * x[indices[k]];
+  y[i] = acc;
+}
+template <class T>
+__global__ void k_pairwise_sqdist(long m, long n, long dim, const T* A, const T* B, T* D) {
+  long idx = blockIdx.x * (long)blockDim.x + threadIdx.x;
+  if (idx >= m * n) return;
+  const T* a = A + (idx / n) * dim;
+  const T* b = B + (idx % n) * dim;
+  T s = T(0);
+  for (long d = 0; d < dim; ++d) { T df = a[d] - b[d]; s += df * df; }
+  D[idx] = s;
+}
+template <class T>
+__global__ void k_corr1d(long lines, long len, const T* in, const T* w, long klen,
+                         long anchor, int mode, double cval, T* out) {
+  long idx = blockIdx.x * (long)blockDim.x + threadIdx.x;
+  if (idx >= lines * len) return;
+  const long i = idx % len;
+  const T* row = in + (idx / len) * len;
+  T acc = T(0);
+  for (long k = 0; k < klen; ++k) {
+    long long bi = npp_bound_index((long long)(i + k - anchor), (long long)len, mode);
+    acc += w[k] * (bi < 0 ? (T)cval : row[bi]);
+  }
+  out[idx] = acc;
+}
+
 bool have_device() {
   int count = 0;
   return cudaGetDeviceCount(&count) == cudaSuccess && count > 0;
@@ -159,6 +205,68 @@ bool gemm_t(int64_t m, int64_t n, int64_t k, const void* A, const void* B, void*
   return ok;
 }
 
+template <class T>
+bool csr_spmv_t(int64_t rows, int64_t cols, int64_t nnz, const int64_t* indptr,
+                const int64_t* indices, const void* data, const void* x, void* y) {
+  Buf dip = pool().acquire((size_t)(rows + 1) * sizeof(int64_t));
+  Buf dix = pool().acquire((size_t)nnz * sizeof(int64_t));
+  Buf dd = pool().acquire((size_t)nnz * sizeof(T));
+  Buf dx = pool().acquire((size_t)cols * sizeof(T));
+  Buf dy = pool().acquire((size_t)rows * sizeof(T));
+  bool ok = dip.ptr && dix.ptr && dd.ptr && dx.ptr && dy.ptr;
+  if (ok) {
+    cudaMemcpy(dip.ptr, indptr, (size_t)(rows + 1) * sizeof(int64_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(dix.ptr, indices, (size_t)nnz * sizeof(int64_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(dd.ptr, data, (size_t)nnz * sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(dx.ptr, x, (size_t)cols * sizeof(T), cudaMemcpyHostToDevice);
+    const int threads = 256;
+    const long blocks = (rows + threads - 1) / threads;
+    k_csr_spmv<T><<<blocks, threads>>>((long)rows, (const long long*)dip.ptr, (const long long*)dix.ptr,
+                                       (const T*)dd.ptr, (const T*)dx.ptr, (T*)dy.ptr);
+    ok = cudaDeviceSynchronize() == cudaSuccess &&
+         cudaMemcpy(y, dy.ptr, (size_t)rows * sizeof(T), cudaMemcpyDeviceToHost) == cudaSuccess;
+  }
+  pool().release(dip); pool().release(dix); pool().release(dd); pool().release(dx); pool().release(dy);
+  return ok;
+}
+template <class T>
+bool pairwise_sqdist_t(int64_t m, int64_t n, int64_t dim, const void* A, const void* B, void* D) {
+  Buf da = pool().acquire((size_t)m * dim * sizeof(T));
+  Buf db = pool().acquire((size_t)n * dim * sizeof(T));
+  Buf dd = pool().acquire((size_t)m * n * sizeof(T));
+  bool ok = da.ptr && db.ptr && dd.ptr;
+  if (ok) {
+    cudaMemcpy(da.ptr, A, (size_t)m * dim * sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(db.ptr, B, (size_t)n * dim * sizeof(T), cudaMemcpyHostToDevice);
+    const int threads = 256;
+    const long blocks = (m * n + threads - 1) / threads;
+    k_pairwise_sqdist<T><<<blocks, threads>>>((long)m, (long)n, (long)dim, (const T*)da.ptr, (const T*)db.ptr, (T*)dd.ptr);
+    ok = cudaDeviceSynchronize() == cudaSuccess &&
+         cudaMemcpy(D, dd.ptr, (size_t)m * n * sizeof(T), cudaMemcpyDeviceToHost) == cudaSuccess;
+  }
+  pool().release(da); pool().release(db); pool().release(dd);
+  return ok;
+}
+template <class T>
+bool corr1d_t(int64_t lines, int64_t len, const void* in, const void* w, int64_t klen,
+              int64_t origin, int mode, double cval, void* out) {
+  const size_t nbytes = (size_t)lines * len * sizeof(T);
+  Buf din = pool().acquire(nbytes), dw = pool().acquire((size_t)klen * sizeof(T)), dout = pool().acquire(nbytes);
+  bool ok = din.ptr && dw.ptr && dout.ptr;
+  if (ok) {
+    cudaMemcpy(din.ptr, in, nbytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(dw.ptr, w, (size_t)klen * sizeof(T), cudaMemcpyHostToDevice);
+    const int threads = 256;
+    const long blocks = (lines * len + threads - 1) / threads;
+    k_corr1d<T><<<blocks, threads>>>((long)lines, (long)len, (const T*)din.ptr, (const T*)dw.ptr,
+                                     (long)klen, (long)(klen / 2 + origin), mode, cval, (T*)dout.ptr);
+    ok = cudaDeviceSynchronize() == cudaSuccess &&
+         cudaMemcpy(out, dout.ptr, nbytes, cudaMemcpyDeviceToHost) == cudaSuccess;
+  }
+  pool().release(din); pool().release(dw); pool().release(dout);
+  return ok;
+}
+
 bool ew_binary(int op, DTypeId dt, int64_t n, const void* a, const void* b, void* out) {
   if (op < kGAdd || op > kGDiv || !have_device()) return false;
   if (dt == DTypeId::Float32) return elementwise<float>(op, n, a, b, out, false);
@@ -183,8 +291,29 @@ bool gemm_impl(DTypeId dt, int64_t m, int64_t n, int64_t k, const void* A, const
   if (dt == DTypeId::Float64) return gemm_t<double>(m, n, k, A, B, C);
   return false;
 }
+bool csr_spmv_impl(DTypeId dt, int64_t rows, int64_t cols, int64_t nnz, const int64_t* indptr,
+                   const int64_t* indices, const void* data, const void* x, void* y) {
+  if (!have_device()) return false;
+  if (dt == DTypeId::Float32) return csr_spmv_t<float>(rows, cols, nnz, indptr, indices, data, x, y);
+  if (dt == DTypeId::Float64) return csr_spmv_t<double>(rows, cols, nnz, indptr, indices, data, x, y);
+  return false;
+}
+bool pairwise_sqdist_impl(DTypeId dt, int64_t m, int64_t n, int64_t dim, const void* A, const void* B, void* D) {
+  if (!have_device()) return false;
+  if (dt == DTypeId::Float32) return pairwise_sqdist_t<float>(m, n, dim, A, B, D);
+  if (dt == DTypeId::Float64) return pairwise_sqdist_t<double>(m, n, dim, A, B, D);
+  return false;
+}
+bool separable_corr1d_impl(DTypeId dt, int64_t lines, int64_t len, const void* in, const void* weights,
+                           int64_t klen, int64_t origin, int mode, double cval, void* out) {
+  if (!have_device()) return false;
+  if (dt == DTypeId::Float32) return corr1d_t<float>(lines, len, in, weights, klen, origin, mode, cval, out);
+  if (dt == DTypeId::Float64) return corr1d_t<double>(lines, len, in, weights, klen, origin, mode, cval, out);
+  return false;
+}
 
-const GpuVTable g_vtable{"cuda", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl};
+const GpuVTable g_vtable{"cuda", &ew_binary, &ew_unary, &reduce_impl, &gemm_impl,
+                         &csr_spmv_impl, &pairwise_sqdist_impl, &separable_corr1d_impl};
 
 }  // namespace
 

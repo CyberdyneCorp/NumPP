@@ -65,5 +65,5 @@ closed-form theory). Beyond hand-written cases, we also **mine NumPy's own test
 suite** (e.g. `numpy/linalg/tests/test_linalg.py`) — its seed arrays and edge
 cases (complex, non-square, size-0, 1×1, stacked) are replayed through the oracle;
 this surfaced and fixed real bugs in SVD accuracy (#74) and `roots()` complex-root
-handling (#104), among others. 2569 oracle checks across 953 cases pass with zero
+handling (#104), among others. 2607 oracle checks across 957 cases pass with zero
 divergences.

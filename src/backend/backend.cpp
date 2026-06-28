@@ -1,12 +1,17 @@
 #include "numpp/backend/backend.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "numpp/backend/blas_vtable.hpp"
 #include "numpp/backend/gpu_vtable.hpp"
 #include "numpp/backend/config.hpp"
+#include "numpp/core/shape.hpp"          // normalize_axis (correlate1d)
+
+#include "scypp_kernels.hpp"             // shared CPU reference kernels
 
 namespace numpp {
 namespace {
@@ -169,6 +174,148 @@ ndarray matmul(const ndarray& a, const ndarray& b, Backend forced) {
   }
   t_last = Backend::Cpu;
   return cpu_matmul(a, b, dt);
+}
+
+// ---- ScyPP acceleration primitives -----------------------------------------
+namespace {
+
+int64_t device_min() {
+  if (const char* e = std::getenv("NUMPP_GPU_MIN")) {
+    char* end = nullptr;
+    long long v = std::strtoll(e, &end, 10);
+    if (end != e && v >= 0) return v;
+  }
+  return 1 << 16;
+}
+bool is_gpu_backend(Backend b) {
+  return b == Backend::Metal || b == Backend::Vulkan || b == Backend::Cuda ||
+         b == Backend::OpenCL || b == Backend::Device;
+}
+// Decide whether to attempt the device slot. `slot_present` is (vtable && slot).
+// A forced GPU backend with no usable slot is an error; Auto/Device use the slot
+// when present and the problem clears the size threshold.
+bool try_device(Backend forced, bool slot_present, int64_t work) {
+  if (forced == Backend::Cpu) return false;
+  if (!slot_present) {
+    if (is_gpu_backend(forced))
+      throw not_implemented_error(std::string("backend '") + backend_name(forced) +
+                                  "' is not available for this op");
+    return false;
+  }
+  if (is_gpu_backend(forced)) return true;  // explicit device: bypass threshold
+  return work >= device_min();              // Auto
+}
+// float32 only when both operands are float32; otherwise float64.
+DType pick_float(DType a, DType b) {
+  return (a == kFloat32 && b == kFloat32) ? kFloat32 : kFloat64;
+}
+
+}  // namespace
+
+ndarray csr_spmv(const ndarray& indptr, const ndarray& indices, const ndarray& data,
+                 const ndarray& x, Backend forced) {
+  if (indptr.ndim() != 1 || indices.ndim() != 1 || data.ndim() != 1 || x.ndim() != 1)
+    throw value_error("csr_spmv: indptr/indices/data/x must be 1-D");
+  if (indptr.size() < 1) throw value_error("csr_spmv: indptr must have length rows+1");
+  const int64_t rows = indptr.size() - 1;
+  const int64_t nnz = data.size();
+  const DType dt = pick_float(data.dtype(), x.dtype());
+  ndarray ip = indptr.astype(kInt64).ascontiguousarray();
+  ndarray ix = indices.astype(kInt64).ascontiguousarray();
+  ndarray dd = data.astype(dt).ascontiguousarray();
+  ndarray xx = x.astype(dt).ascontiguousarray();
+  ndarray y(Shape{rows}, dt, Order::C);
+
+  const GpuVTable* vt = gpu_vtable();
+  const bool slot = vt && vt->csr_spmv;
+  if (try_device(forced, slot, nnz) &&
+      vt->csr_spmv(dt.id(), rows, x.size(), nnz, ip.typed_data<int64_t>(), ix.typed_data<int64_t>(),
+                   dd.bytes(), xx.bytes(), y.bytes())) {
+    t_last = Backend::Device;
+    return y;
+  }
+  t_last = Backend::Cpu;
+  if (dt == kFloat32)
+    scypp_cpu::csr_spmv<float>(rows, ip.typed_data<int64_t>(), ix.typed_data<int64_t>(),
+                               dd.typed_data<float>(), xx.typed_data<float>(), y.typed_data<float>());
+  else
+    scypp_cpu::csr_spmv<double>(rows, ip.typed_data<int64_t>(), ix.typed_data<int64_t>(),
+                                dd.typed_data<double>(), xx.typed_data<double>(), y.typed_data<double>());
+  return y;
+}
+
+ndarray cdist_euclidean(const ndarray& A, const ndarray& B, bool squared, Backend forced) {
+  if (A.ndim() != 2 || B.ndim() != 2) throw value_error("cdist_euclidean: A and B must be 2-D");
+  if (A.shape()[1] != B.shape()[1]) throw value_error("cdist_euclidean: dim mismatch");
+  const int64_t m = A.shape()[0], n = B.shape()[0], dim = A.shape()[1];
+  const DType dt = pick_float(A.dtype(), B.dtype());
+  ndarray Ac = A.astype(dt).ascontiguousarray();
+  ndarray Bc = B.astype(dt).ascontiguousarray();
+  ndarray D(Shape{m, n}, dt, Order::C);
+
+  const GpuVTable* vt = gpu_vtable();
+  const bool slot = vt && vt->pairwise_sqdist;
+  bool on_device = false;
+  if (try_device(forced, slot, m * n * dim) &&
+      vt->pairwise_sqdist(dt.id(), m, n, dim, Ac.bytes(), Bc.bytes(), D.bytes())) {
+    t_last = Backend::Device;
+    on_device = true;
+  }
+  if (!on_device) {
+    t_last = Backend::Cpu;
+    if (dt == kFloat32)
+      scypp_cpu::pairwise_sqdist<float>(m, n, dim, Ac.typed_data<float>(), Bc.typed_data<float>(), D.typed_data<float>());
+    else
+      scypp_cpu::pairwise_sqdist<double>(m, n, dim, Ac.typed_data<double>(), Bc.typed_data<double>(), D.typed_data<double>());
+  }
+  if (squared) return D;
+  // euclidean = sqrt(squared), applied on the host for both paths.
+  if (dt == kFloat32) { float* p = D.typed_data<float>(); for (int64_t i = 0; i < m * n; ++i) p[i] = std::sqrt(p[i]); }
+  else { double* p = D.typed_data<double>(); for (int64_t i = 0; i < m * n; ++i) p[i] = std::sqrt(p[i]); }
+  return D;
+}
+
+ndarray correlate1d(const ndarray& input, const ndarray& weights, int64_t axis,
+                    int64_t origin, FilterMode mode, double cval, Backend forced) {
+  if (weights.ndim() != 1 || weights.size() == 0) throw value_error("correlate1d: weights must be 1-D, non-empty");
+  const int64_t nd = input.ndim();
+  if (nd == 0) throw value_error("correlate1d: input must be at least 1-D");
+  const int64_t ax = normalize_axis(axis, nd);
+  const DType dt = (input.dtype() == kFloat32 && weights.dtype() == kFloat32) ? kFloat32 : kFloat64;
+  const int64_t len = input.shape()[ax];
+  const int64_t klen = weights.size();
+
+  // Move the filter axis last and flatten to (lines, len) contiguous rows.
+  std::vector<int64_t> perm;
+  for (int64_t i = 0; i < nd; ++i) if (i != ax) perm.push_back(i);
+  perm.push_back(ax);
+  ndarray moved = input.transpose(perm).astype(dt).ascontiguousarray();
+  ndarray w = weights.astype(dt).ascontiguousarray();
+  const int64_t lines = len ? moved.size() / len : 0;
+  ndarray out_moved(moved.shape(), dt, Order::C);
+  const int imode = static_cast<int>(mode);
+
+  const GpuVTable* vt = gpu_vtable();
+  const bool slot = vt && vt->separable_corr1d;
+  bool on_device = false;
+  if (try_device(forced, slot, moved.size()) &&
+      vt->separable_corr1d(dt.id(), lines, len, moved.bytes(), w.bytes(), klen, origin, imode, cval, out_moved.bytes())) {
+    t_last = Backend::Device;
+    on_device = true;
+  }
+  if (!on_device) {
+    t_last = Backend::Cpu;
+    if (dt == kFloat32)
+      scypp_cpu::separable_corr1d<float>(lines, len, moved.typed_data<float>(), w.typed_data<float>(),
+                                         klen, origin, imode, cval, out_moved.typed_data<float>());
+    else
+      scypp_cpu::separable_corr1d<double>(lines, len, moved.typed_data<double>(), w.typed_data<double>(),
+                                          klen, origin, imode, cval, out_moved.typed_data<double>());
+  }
+  // Invert the permutation back to the original axis order.
+  std::vector<int64_t> inv(nd);
+  for (int64_t i = 0; i < nd; ++i) inv[perm[i]] = i;
+  return out_moved.transpose(inv).ascontiguousarray();
 }
 
 }  // namespace numpp

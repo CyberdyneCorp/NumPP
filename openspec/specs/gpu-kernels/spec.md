@@ -91,3 +91,30 @@ shared-memory tiled kernel, without changing results.
   element-wise arithmetic and sqrt remain IEEE-exact)
 - AND device buffers are reused across calls rather than reallocated each time
 
+
+### Requirement: ScyPP acceleration kernels (sparse / geometry / ndimage)
+NumPP SHALL expose, through the same weak-linked GpuVTable and dispatch substrate,
+device-accelerable kernels whose high-level API lives in ScyPP (the C++ SciPy
+port): CSR sparse matrix-vector product (`csr_spmv`), pairwise squared/euclidean
+distance (`cdist_euclidean`), and separable 1-D correlation (`correlate1d`,
+matching scipy.ndimage modes reflect/constant/nearest/mirror/wrap). Each SHALL
+provide a portable CPU kernel that is always available, auto-select a registered
+device backend when the problem clears NUMPP_GPU_MIN, fall back to the CPU kernel
+otherwise (or on an unsupported dtype, or when no device is present), and report
+the choice via last_backend(). These are NOT part of NumPP's numpy.* surface.
+
+#### Scenario: Device kernel equals the CPU kernel
+- GIVEN a build with a registered device backend (real GPU or the reference device)
+- WHEN csr_spmv / cdist_euclidean / correlate1d runs above the size threshold
+- THEN the result equals the portable CPU kernel's result within tolerance
+- AND last_backend() reports the device backend
+
+#### Scenario: CPU fallback below threshold or without a device
+- WHEN the problem is below NUMPP_GPU_MIN, the dtype is unsupported, or no device
+  backend is registered (the default build)
+- THEN the portable CPU kernel computes the result and last_backend() is Cpu
+
+#### Scenario: correlate1d matches scipy.ndimage
+- GIVEN weights, an axis, an origin and a boundary mode
+- WHEN correlate1d runs
+- THEN the result equals scipy.ndimage.correlate1d for the same arguments
