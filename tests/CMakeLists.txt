@@ -59,6 +59,7 @@ add_executable(numpp_tests
     test_nanfunctions_mined.cpp
     test_nanfunctions_mined2.cpp
     test_arraysetops_mined.cpp
+    test_histograms_mined.cpp
     test_function_base_mined.cpp
     test_poly_mined.cpp
     test_numeric_mined.cpp
