@@ -193,14 +193,17 @@ hard/soft masks.
 already existed. Deferred: `dtype=object` arrays (type-erased storage), `recarray`.
 
 ### add-datetime-completion 🟡
-`is_busday`/`busday_count`/`busday_offset`, `datetime_as_string` ✅. Deferred:
-full unit conversion, structured-dtype `.npy` (#14).
+`is_busday`/`busday_count`/`busday_offset`, `datetime_as_string` ✅;
+structured-dtype `.npy` (#14) **delivered v1.4.0**. Deferred: full datetime unit
+conversion.
 
 ### add-gpu-backends ✅
 **Real OpenCL + CUDA backends** behind the weak-vtable slots, validated on an
 NVIDIA RTX 5060 (sm_120): float32/64 add/sub/mul/div/neg/sqrt + sum/prod +
-**GEMM/matmul** on the GPU (CUDA via PTX-virtual JIT). Deferred: Metal/Vulkan,
-device-resident buffers / async transfer, tiled GEMM, Auto-routed matmul.
+**GEMM/matmul** on the GPU (CUDA via PTX-virtual JIT), plus the **v1.5.0 ScyPP
+acceleration slots** (csr_spmv/cdist_euclidean/correlate1d, #99/#106). Deferred:
+Metal/Vulkan (#135), CSR SpMM (#134), CSR-adaptive SpMV (#136), GPU hardware CI
+(#135), device-resident buffers / async transfer, cuBLAS/clBLAST path.
 
 ### add-bitexact-longtail ✅
 **Philox (#36)**, standalone **MT19937 (#9)**, `choice(replace=False)` (#7) and
@@ -281,3 +284,28 @@ surface is Buckets A and B, deferred by design.
 `object` dtype, `recarray`, `frompyfunc` (Bucket A) are explicitly **out** — a C++
 SciPP uses templates/variants/`std::function`, so adding them would be divergence
 with no payoff. Metal stays a backend concern, not a `numpy.*` feature.
+
+---
+
+## Tracked open issues (backlog with full context)
+
+Small, well-scoped gaps surfaced during NumPy-test mining and the ScyPP
+acceleration work, each filed as a GitHub issue with where/repro/approach so the
+work can resume cold. They also appear in the OpenSpec `numpy-parity-roadmap`
+backlog. None block the `numpy.*` foundation; they are incremental parity/perf.
+
+### `numpy.*` parity
+| # | Gap |
+|---|-----|
+| #129 | complex `min`/`max` (amin/amax/minimum/maximum + reductions), lexicographic |
+| #130 | `dot`/`inner`/`kron` for ndim>2 (N-D contraction / Kronecker) |
+| #131 | `take(mode=wrap/clip)`, `ravel_multi_index`/`unravel_index(order='F')`, `repeat(per-element)` |
+| #132 | `histogram(density=, weights=)` |
+| #133 | `arange` integer precision beyond 2^53 |
+
+### Device acceleration (shared `GpuVTable`, for ScyPP — OpenSpec `gpu-kernels`)
+| # | Gap |
+|---|-----|
+| #134 | CSR **SpMM** (sparse × dense matrix) slot — follow-up to #99 |
+| #135 | **Metal** backend + GPU **hardware CI** validation for the device kernels |
+| #136 | vector/CSR-adaptive **SpMV** variant (performance) |
