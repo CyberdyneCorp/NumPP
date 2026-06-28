@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.9 — 2026-06-27 — test_regression.py mining: historical-gotcha coverage
+
+Caps the live-NumPy-oracle mining campaign with assorted historical gotchas from
+`numpy/_core/tests/test_regression.py`. **938 cases / 2498 checks, 0 divergences.**
+No behavior change — pure validation-surface expansion:
+
+- **NaN ordering** — `sort`/`argsort`/`argmax` push NaN to the end.
+- **round half-to-even** — base, `decimals=2` (the `2.675→2.68` float-repr case),
+  and negative decimals.
+- **sinc / heaviside**, **multi-axis roll**, **diff n=0**.
+- **empty/degenerate reductions** — `mean` of empty → nan, `std` of one → 0, `clip`
+  with reversed bounds.
+- **integers to negative integer powers** raise `value_error` (numpy `ValueError`
+  parity); **partition** verified by its kth-in-place contract.
+
+The probing pass also confirmed several numpy behaviors NumPP does not yet expose
+are genuine feature gaps (not divergences): `take` `mode=wrap/clip`,
+`ravel_multi_index` `order='F'`, `histogram` `density=/weights=`, per-element
+`repeat`.
+
 ## 1.3.8 — 2026-06-27 — test-suite mining: set-ops/histograms/type-check/shape/index/stride coverage
 
 Extends the live-NumPy-oracle mining campaign across six further NumPy test files —
