@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.5.0 — 2026-06-28 — ScyPP device acceleration kernels (sparse / spatial / ndimage)
+
+Adds three device-accelerable primitives to NumPP's shared tiered-acceleration
+substrate so ScyPP (the C++ SciPy port) can offload through the same `GpuVTable`,
+`CapabilityRegistry` and `last_backend()`. They are **not** part of NumPP's
+`numpy.*` surface — they sit beside `matmul` as low-level backend primitives whose
+high-level `scipy.*` API lives in ScyPP. **957 cases / 2607 checks, 0 divergences.**
+
+- **`csr_spmv` (#99)** — CSR sparse matrix-vector product `y = A·x`.
+- **`cdist_euclidean` (#106)** — pairwise squared/euclidean distance matrix.
+- **`correlate1d` (#106)** — separable 1-D correlation with scipy.ndimage boundary
+  modes (reflect/constant/nearest/mirror/wrap) and `origin`.
+
+Each has a portable CPU kernel (always present), auto-selects a registered device
+backend above `NUMPP_GPU_MIN`, and falls back to CPU otherwise. Three new weak-
+linked `GpuVTable` slots are served by real OpenCL and CUDA kernels (gated by
+`NUMPP_WITH_OPENCL`/`NUMPP_WITH_CUDA`, mirroring the tiled-GEMM slot). The CPU
+reference kernels are shared with the reference-device backend, so the device path
+is byte-identical to the CPU path; a new CI `refgpu` job exercises that dispatch
+path (device result == CPU, `last_backend()==Device`).
+
 ## 1.4.0 — 2026-06-28 — issue burndown: packaging, axis-tuple reductions, printing, structured I/O, arange
 
 Drives the open-issue backlog to zero. **953 cases / 2569 checks, 0 divergences.**
