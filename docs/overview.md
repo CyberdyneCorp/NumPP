@@ -64,5 +64,6 @@ in portable C++ are validated **statistically** (large-sample moments vs the
 closed-form theory). Beyond hand-written cases, we also **mine NumPy's own test
 suite** (e.g. `numpy/linalg/tests/test_linalg.py`) — its seed arrays and edge
 cases (complex, non-square, size-0, 1×1, stacked) are replayed through the oracle;
-this surfaced and fixed a real SVD accuracy bug (#74). 2118 oracle checks across
-789 cases pass with zero divergences.
+this surfaced and fixed real bugs in SVD accuracy (#74) and `roots()` complex-root
+handling (#104), among others. 2415 oracle checks across 904 cases pass with zero
+divergences.

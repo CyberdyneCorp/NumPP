@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.3.7 — 2026-06-27 — test_numeric/einsum/function_base/polynomial mining + roots() complex-root fix
+
+Continues mining NumPy's own test suites through the live-NumPy oracle across the
+array-math, einsum, lib and polynomial layers. **904 cases / 2415 checks, 0
+divergences.** One real bug found and fixed:
+
+- **`roots()` no longer drops the imaginary part of complex roots.** It built its
+  result from `real(eigvals(companion))`, so a polynomial with complex-conjugate
+  roots (e.g. `x^2 + 1`) returned `[0, 0]` instead of `±i`. Both real and imaginary
+  parts of the companion-matrix eigenvalues are now preserved; the result is a real
+  array only when every root is real (matching `numpy.roots`), `complex128`
+  otherwise. All-real-root polynomials are unaffected. (#104)
+
+New oracle-mined regression coverage (no further divergences):
+
+- **`test_numeric.py`** — `cross` (3-D, 2-D z-component, batched rows), `tensordot`
+  (single-axis and explicit axis lists), `outer`/`inner`, `correlate`/`convolve`
+  (full/same/valid).
+- **`test_einsum.py`** — trace/diagonal/transpose/reductions, matmul/dot/outer,
+  implicit output, ellipsis `...ij->...ji`, batched `bij,bjk->bik`, chained
+  three-operand `ij,jk,kl->il`.
+- **`test_function_base.py`** — `interp` (basic, left/right fills, periodic), `trapz`
+  (dx and explicit x), `bincount` (counts, weights, minlength), `percentile`/`median`
+  (incl. q=0/100), 1-D `gradient`, `unwrap`.
+- **`test_polynomial.py`** — `roots` (real, complex, cubic), `polyval`, `polyfit`
+  (linear/quadratic), `polyder`/`polyint`, `poly`, `polyadd`/`polymul`, `vander`.
+
 ## 1.3.6 — 2026-06-27 — test_nanfunctions.py mining: NaN-reduction fixes
 
 Mines NumPy's own `numpy/lib/tests/test_nanfunctions.py` through the live-NumPy
