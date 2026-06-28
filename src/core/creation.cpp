@@ -77,8 +77,14 @@ ndarray arange(double start, double stop, double step, DType dtype) {
   return a;
 }
 
-ndarray arange(double start, double stop, double step) { return arange(start, stop, step, default_int()); }
-ndarray arange(double stop) { return arange(0.0, stop, 1.0, default_int()); }
+// Floating ranges: any float argument yields a float result (numpy parity, #120).
+ndarray arange(double start, double stop, double step) { return arange(start, stop, step, kFloat64); }
+ndarray arange(double stop) { return arange(0.0, stop, 1.0, kFloat64); }
+// Integer ranges: integer arguments yield the platform integer dtype.
+ndarray arange(int64_t start, int64_t stop, int64_t step) {
+  return arange(static_cast<double>(start), static_cast<double>(stop), static_cast<double>(step), default_int());
+}
+ndarray arange(int64_t stop) { return arange(0.0, static_cast<double>(stop), 1.0, default_int()); }
 
 ndarray linspace(double start, double stop, int64_t num, bool endpoint, DType dtype) {
   if (num < 0) throw value_error("number of samples must be non-negative");

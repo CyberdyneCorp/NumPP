@@ -22,8 +22,29 @@ TEST_CASE("dtype metadata and names") {
 
 TEST_CASE("default dtypes") {
   CHECK(zeros({2}).dtype() == kFloat64);
-  CHECK(arange(3.0).dtype() == default_int());
+  // arange dtype follows the argument type, like numpy: float args -> float64,
+  // integer args -> the platform integer dtype (#120).
+  CHECK(arange(3.0).dtype() == kFloat64);
+  CHECK(arange(3).dtype() == default_int());
   CHECK(default_int() == kInt64);  // LP64 platform
+}
+
+TEST_CASE("arange dtype follows argument type like numpy (#120)") {
+  // Integer arguments -> integer dtype; any float argument -> float64.
+  CHECK(arange(6).dtype() == kInt64);
+  CHECK(arange(0, 6, 2).dtype() == kInt64);
+  CHECK(arange(6.0).dtype() == kFloat64);
+  CHECK(arange(0.0, 6.0, 1.0).dtype() == kFloat64);
+  // Explicit dtype still overrides.
+  CHECK(arange(0.0, 6.0, 1.0, kFloat32).dtype() == kFloat32);
+  // Fractional ranges work without an explicit dtype (the original bug).
+  ndarray a = arange(0.0, 1.0, 0.25);
+  CHECK(a.dtype() == kFloat64);
+  CHECK(a.size() == 4);
+  CHECK(a.item<double>({1}) == 0.25);
+  // Values match numpy.
+  auto o = npt::oracle("a=np.arange(0.,1.,0.25)");
+  if (o) CHECK(allclose(a, *o, 1e-12, 1e-12, true));
 }
 
 TEST_CASE("result_type matches NumPy for all dtype pairs") {
