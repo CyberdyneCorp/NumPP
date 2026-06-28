@@ -1,11 +1,14 @@
 #include "numpp/io/npy.hpp"
 
 #include "numpp/datetime/datetime.hpp"
+#include "numpp/struct/struct.hpp"      // make_struct (structured-dtype .npy descr)
 
 #include <cctype>
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace numpp {
 namespace {
@@ -54,10 +57,43 @@ DType descr_to_dtype(const std::string& descr) {
   throw type_error("npy: unsupported descr '" + descr + "'");
 }
 
+bool is_struct_dtype(DType d) {
+  return d.kind() == 'V' && d.meta() && !d.meta()->fields.empty();
+}
+
+// The descr value as it appears in the .npy header dict: a quoted string for
+// scalar dtypes, or an unquoted Python list of (name, format) tuples for a
+// structured dtype, e.g. [('x', '<i4'), ('y', '<f8')].
+std::string descr_header_value(DType d) {
+  if (!is_struct_dtype(d)) return "'" + dtype_to_descr(d) + "'";
+  std::string s = "[";
+  const auto& fs = d.meta()->fields;
+  for (size_t i = 0; i < fs.size(); ++i) {
+    s += "('" + fs[i].name + "', '" + dtype_to_descr(fs[i].dtype) + "')";
+    if (i + 1 < fs.size()) s += ", ";
+  }
+  return s + "]";
+}
+
+// Parse a structured descr list "[('name', 'fmt'), ...]" into a packed dtype.
+DType parse_struct_descr(const std::string& list) {
+  std::vector<std::pair<std::string, DType>> fields;
+  for (size_t i = 0; (i = list.find('(', i)) != std::string::npos;) {
+    size_t n1 = list.find('\'', i), n2 = list.find('\'', n1 + 1);
+    std::string name = list.substr(n1 + 1, n2 - n1 - 1);
+    size_t f1 = list.find('\'', n2 + 1), f2 = list.find('\'', f1 + 1);
+    std::string fmt = list.substr(f1 + 1, f2 - f1 - 1);
+    fields.emplace_back(name, descr_to_dtype(fmt));
+    i = list.find(')', f2);
+    if (i == std::string::npos) break;
+  }
+  return make_struct(fields);
+}
+
 std::string npy_bytes(const ndarray& a) {
   ndarray c = a.ascontiguousarray();
-  std::string header = "{'descr': '" + dtype_to_descr(c.dtype()) +
-                       "', 'fortran_order': False, 'shape': " + shape_tuple(c.shape()) + ", }";
+  std::string header = "{'descr': " + descr_header_value(c.dtype()) +
+                       ", 'fortran_order': False, 'shape': " + shape_tuple(c.shape()) + ", }";
   // pad so that (10 + header.size() + 1) % 64 == 0, header ends with '\n'
   size_t total = 10 + header.size() + 1;
   size_t pad = (64 - (total % 64)) % 64;
@@ -92,8 +128,14 @@ ndarray npy_from_bytes(const char* data, size_t size) {
     return p == std::string::npos ? std::string() : header.substr(p + key.size());
   };
   std::string ds = field("'descr':");
-  size_t q1 = ds.find('\''), q2 = ds.find('\'', q1 + 1);
-  DType dt = descr_to_dtype(ds.substr(q1 + 1, q2 - q1 - 1));
+  size_t nb = ds.find_first_not_of(" \t");
+  DType dt;
+  if (nb != std::string::npos && ds[nb] == '[') {  // structured: list descr
+    dt = parse_struct_descr(ds.substr(nb, ds.find(']', nb) - nb + 1));
+  } else {
+    size_t q1 = ds.find('\''), q2 = ds.find('\'', q1 + 1);
+    dt = descr_to_dtype(ds.substr(q1 + 1, q2 - q1 - 1));
+  }
   std::string fo = field("'fortran_order':");
   bool fortran = fo.substr(0, fo.find(',')).find("True") != std::string::npos;
   std::string ss = field("'shape':");
