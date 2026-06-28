@@ -58,6 +58,7 @@ add_executable(numpp_tests
     test_multiarray_mined4.cpp
     test_nanfunctions_mined.cpp
     test_nanfunctions_mined2.cpp
+    test_regression_mined.cpp
     test_index_tricks_mined.cpp
     test_stride_tricks_mined.cpp
     test_type_check_mined.cpp
