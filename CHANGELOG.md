@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.4.0 — 2026-06-28 — issue burndown: packaging, axis-tuple reductions, printing, structured I/O, arange
+
+Drives the open-issue backlog to zero. **953 cases / 2569 checks, 0 divergences.**
+
+New features:
+
+- **Axis-tuple reductions (#3).** `sum`/`prod`/`amin`/`amax`/`mean`/`var`/`std`/`any`/
+  `all` accept a `std::vector<int64_t>` of axes, e.g. `sum(a, {0, 2})`, matching
+  numpy (non-reduced axes keep order; `keepdims` re-inserts size-1 dims). This was
+  the last open item in the Phase-3 ufunc tracker; the rest were already done.
+- **Scientific-notation printing (#11).** `array_str`/`array_repr` now switch a
+  float column to numpy's aligned exponential format when the magnitudes warrant
+  it (max ≥ 1e8, min < 1e-4, or ratio > 1000), including exponent/fraction
+  alignment and per-part complex columns. Ordinary-magnitude output is unchanged.
+- **Structured-dtype `.npy` I/O (#14).** Structured (`'V'`) arrays now serialize and
+  parse the Python list descr (`[('x','<i4'),('y','<f8')]`), so they round-trip and
+  interoperate with numpy both directions.
+
+Fixes:
+
+- **`arange` dtype follows the argument type (#120).** Float arguments now yield
+  float64 (so `arange(0., 1., 0.25)` no longer truncates) and integer arguments
+  yield the platform integer dtype, matching numpy; an explicit `DType` still
+  overrides.
+- **Downstream packaging (#107/#108/#109).** Install the C public header
+  (`interop/dlpack.h`); use `PROJECT_*` dirs so `add_subdirectory`/`FetchContent`
+  embedding works; default `-Werror` OFF (CI keeps it on) and fix the
+  `datetime.cpp` truncation warning; guard the build-tree package registry. A CI
+  `packaging` job now builds a `find_package` consumer and an `add_subdirectory`
+  consumer with `-Werror`.
+
 ## 1.3.9 — 2026-06-27 — test_regression.py mining: historical-gotcha coverage
 
 Caps the live-NumPy-oracle mining campaign with assorted historical gotchas from
