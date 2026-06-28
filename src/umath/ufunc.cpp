@@ -3,6 +3,7 @@
 #include "numpp/backend/backend.hpp"
 #include "numpp/backend/gpu_vtable.hpp"
 #include "numpp/core/creation.hpp"
+#include "numpp/core/shape.hpp"          // normalize_axis (axis-tuple reductions)
 #include "numpp/umath/errstate.hpp"
 
 #include <algorithm>
@@ -614,6 +615,40 @@ ndarray gpu_or_reduce(const ndarray& a, int gop, std::optional<int64_t> axis, bo
   set_last_backend(Backend::Cpu);
   return cpu();
 }
+
+// Reduce over a tuple of axes: collapse the requested axes into a single trailing
+// axis and delegate to a single-axis reducer. Mirrors numpy's axis-tuple semantics
+// (non-reduced axes keep their original order; keepdims re-inserts size-1 dims).
+ndarray reduce_axes_tuple(
+    const ndarray& a, std::vector<int64_t> axes, bool keepdims,
+    const std::function<ndarray(const ndarray&, std::optional<int64_t>, bool)>& single) {
+  const int64_t nd = a.ndim();
+  std::vector<int64_t> ax;
+  ax.reserve(axes.size());
+  for (int64_t x : axes) ax.push_back(normalize_axis(x, nd));
+  std::sort(ax.begin(), ax.end());
+  ax.erase(std::unique(ax.begin(), ax.end()), ax.end());
+  if (ax.empty()) return a.copy();                            // axis=() reduces nothing
+  if (ax.size() == 1) return single(a, ax[0], keepdims);
+  if (static_cast<int64_t>(ax.size()) == nd) return single(a, std::nullopt, keepdims);
+
+  std::vector<bool> isax(nd, false);
+  for (int64_t x : ax) isax[x] = true;
+  std::vector<int64_t> perm;
+  Shape kept;
+  for (int64_t i = 0; i < nd; ++i)
+    if (!isax[i]) { perm.push_back(i); kept.push_back(a.shape()[i]); }
+  int64_t collapsed = 1;
+  for (int64_t x : ax) { perm.push_back(x); collapsed *= a.shape()[x]; }
+  Shape cshape(kept);
+  cshape.push_back(collapsed);
+  ndarray moved = a.transpose(perm).ascontiguousarray().reshape(cshape);
+  ndarray res = single(moved, static_cast<int64_t>(kept.size()), false);  // reduce the collapsed axis
+  if (!keepdims) return res;
+  Shape ks(nd);
+  for (int64_t i = 0; i < nd; ++i) ks[i] = isax[i] ? 1 : a.shape()[i];
+  return res.reshape(ks);
+}
 }  // namespace
 ndarray sum(const ndarray& a, std::optional<int64_t> axis, bool keepdims, std::optional<DType> dt) {
   return gpu_or_reduce(a, kGSum, axis, keepdims, dt, [&] { return reduce(a, RedOp::Sum, axis, keepdims, dt); });
@@ -635,6 +670,36 @@ ndarray any(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
 }
 ndarray all(const ndarray& a, std::optional<int64_t> axis, bool keepdims) {
   return reduce(a, RedOp::All, axis, keepdims, std::nullopt);
+}
+
+// ---- axis-tuple reduction overloads (numpy parity, issue #3) ----
+ndarray sum(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims, std::optional<DType> dt) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [&](const ndarray& x, std::optional<int64_t> ax, bool kd) { return sum(x, ax, kd, dt); });
+}
+ndarray prod(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims, std::optional<DType> dt) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [&](const ndarray& x, std::optional<int64_t> ax, bool kd) { return prod(x, ax, kd, dt); });
+}
+ndarray amin(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [](const ndarray& x, std::optional<int64_t> ax, bool kd) { return amin(x, ax, kd); });
+}
+ndarray amax(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [](const ndarray& x, std::optional<int64_t> ax, bool kd) { return amax(x, ax, kd); });
+}
+ndarray mean(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [](const ndarray& x, std::optional<int64_t> ax, bool kd) { return mean(x, ax, kd); });
+}
+ndarray any(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [](const ndarray& x, std::optional<int64_t> ax, bool kd) { return any(x, ax, kd); });
+}
+ndarray all(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [](const ndarray& x, std::optional<int64_t> ax, bool kd) { return all(x, ax, kd); });
 }
 
 // NaN-ignoring reductions (compose existing ufuncs; NaN treated as identity).
@@ -828,6 +893,14 @@ ndarray var(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_
 }
 ndarray std(const ndarray& a, std::optional<int64_t> axis, bool keepdims, int64_t ddof) {
   return sqrt(var(a, axis, keepdims, ddof));
+}
+ndarray var(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims, int64_t ddof) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [ddof](const ndarray& x, std::optional<int64_t> ax, bool kd) { return var(x, ax, kd, ddof); });
+}
+ndarray std(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims, int64_t ddof) {
+  return reduce_axes_tuple(a, axes, keepdims,
+      [ddof](const ndarray& x, std::optional<int64_t> ax, bool kd) { return std(x, ax, kd, ddof); });
 }
 
 ndarray where(const ndarray& cond, const ndarray& a, const ndarray& b) {

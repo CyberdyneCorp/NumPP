@@ -132,6 +132,23 @@ NUMPP_API ndarray nanvar(const ndarray& a, std::optional<int64_t> axis = std::nu
 NUMPP_API ndarray nanstd(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false, int64_t ddof = 0);
 NUMPP_API ndarray all(const ndarray& a, std::optional<int64_t> axis = std::nullopt, bool keepdims = false);
 
+// Axis-tuple reductions (numpy parity, issue #3): reduce over several axes at once,
+// e.g. sum(a, {0, 2}). axes={} reduces nothing (returns a copy); all axes == full
+// reduction. Non-reduced axes keep their original order.
+NUMPP_API ndarray sum(const ndarray& a, const std::vector<int64_t>& axes,
+                      bool keepdims = false, std::optional<DType> dtype = std::nullopt);
+NUMPP_API ndarray prod(const ndarray& a, const std::vector<int64_t>& axes,
+                       bool keepdims = false, std::optional<DType> dtype = std::nullopt);
+NUMPP_API ndarray amin(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false);
+NUMPP_API ndarray amax(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false);
+NUMPP_API ndarray mean(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false);
+NUMPP_API ndarray var(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false,
+                      int64_t ddof = 0);
+NUMPP_API ndarray std(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false,
+                      int64_t ddof = 0);
+NUMPP_API ndarray any(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false);
+NUMPP_API ndarray all(const ndarray& a, const std::vector<int64_t>& axes, bool keepdims = false);
+
 // 0-d array carrying a Python-like scalar, using NumPy NEP-50 weak promotion
 // relative to `like` (int literal stays in the array's kind; float literal makes
 // integer arrays float64).
